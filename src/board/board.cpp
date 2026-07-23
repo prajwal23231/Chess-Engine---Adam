@@ -1,6 +1,12 @@
 #include "board.h"
 #include <iostream>
+#include <cassert>
 using namespace std;
+
+namespace {
+constexpr char START_FEN[] =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+}
 
 Board::Board(){
     clear();
@@ -16,23 +22,27 @@ void Board::clear(){
     enPassant = NO_SQUARE;
     
     halfmoveClock = 0;
-    fullmoveNumber = 0;
+    fullmoveNumber = 1;
 }
 
 Piece Board::charToPiece(char c){
-    if(c=='r') return BR;
-    else if(c=='R') return WR;
-    else if(c=='k') return BK;
-    else if(c=='K') return WK;
-    else if(c=='q') return BQ;
-    else if(c=='Q') return WQ;
-    else if(c=='n') return BN;
-    else if(c=='N') return WN;
-    else if(c=='b') return BB;
-    else if(c=='B') return WB;
-    else if(c=='p') return BP;
-    else if(c=='P') return WP;
-    return EMPTY;
+    switch (c) {
+        case 'P': return WP;
+        case 'N': return WN;
+        case 'B': return WB;
+        case 'R': return WR;
+        case 'Q': return WQ;
+        case 'K': return WK;
+
+        case 'p': return BP;
+        case 'n': return BN;
+        case 'b': return BB;
+        case 'r': return BR;
+        case 'q': return BQ;
+        case 'k': return BK;
+
+        default:  return EMPTY;
+    }
 }
 
 Square Board::parseEnPassantSquare(char pos,int rank,Color tomove){
@@ -68,7 +78,7 @@ Square Board::parseEnPassantSquare(char pos,int rank,Color tomove){
 bool Board::loadFEN(const string &fen){
 
     // filling the board with the help of field 1
-    int i=0,j=56,cur=56;
+    int i=0, j=BOARD_SIZE-RANK_SIZE , cur=BOARD_SIZE-RANK_SIZE;
     array<Piece, NUM_SQUARES> temp_board;
     temp_board.fill(EMPTY);
 
@@ -78,13 +88,13 @@ bool Board::loadFEN(const string &fen){
         // rank change on board
         if(fen[i]=='/') {
             // invalid length of fen
-            if(j != cur+8 || cur==0) return false;
-            j=cur-8;
+            if(j != cur+RANK_SIZE || cur==0) return false;
+            j=cur-RANK_SIZE;
             cur=j;
         }
 
         //  invalid length of fen
-        else if(j >= cur+8){
+        else if(j >= cur+RANK_SIZE){
             return false;
         }
 
@@ -93,7 +103,7 @@ bool Board::loadFEN(const string &fen){
             int num = fen[i] - '0';
 
             // given board exceeds actual board
-            if(num ==0 || num == 9 || j+num > cur+8) return false;
+            if(num <=0 || num > RANK_SIZE || j+num > cur+RANK_SIZE) return false;
 
             while(num--){
                 temp_board[j++] = EMPTY;
@@ -114,7 +124,7 @@ bool Board::loadFEN(const string &fen){
     if(i==fen.size()) return false; // checking if string is exhausted before time
 
     // invalid length of last rank
-    if(j != cur+8 || cur!=0) return false;
+    if(j != cur+RANK_SIZE || cur!=0) return false;
 
     i++; // skipping spaces
     if(i==fen.size()) return false; // checking if string is exhausted before time
@@ -245,10 +255,9 @@ bool Board::loadFEN(const string &fen){
 void Board::rebuildBitboards(){
     bitboards.fill(0);
 
-    for(int i=0;i<64;i++){
-        if(board[i]==EMPTY) continue;
-
+    for(size_t i=0 ; i<BOARD_SIZE ; i++){
         Piece p = board[i];
+        if(p==EMPTY) continue;
         bitboards[p] |= (1ULL<<i);
     }
 }
@@ -264,5 +273,48 @@ void Board::updateOccupancies(){
 
 
 void Board::setStartingPosition(){
+    assert(loadFEN(START_FEN));
+}
 
+char Board::pieceToChar(Piece p){
+    switch (p) {
+        case WP: return 'P';
+        case WN: return 'N';
+        case WB: return 'B';
+        case WR: return 'R';
+        case WQ: return 'Q';
+        case WK: return 'K';
+
+        case BP: return 'p';
+        case BN: return 'n';
+        case BB: return 'b';
+        case BR: return 'r';
+        case BQ: return 'q';
+        case BK: return 'k';
+
+        default: return '.';
+    }
+}
+
+void Board::print() const{
+    for(size_t i=RANK_SIZE ; i>0 ; i--){
+        size_t start_pos = (i-1)*RANK_SIZE;
+
+        cout<<i<<"  ";
+
+        for(size_t j=0 ; j<RANK_SIZE ; j++){
+            char c = pieceToChar(board[start_pos+j]);
+            cout<<c<<" ";
+        }
+
+        cout<<"\n";
+    }
+
+    cout<<"   ";
+
+    for(char c='a';c<='h';c++){
+        cout<<c<<" ";
+    }
+
+    cout<<"\n";
 }

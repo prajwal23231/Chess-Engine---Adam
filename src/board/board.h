@@ -33,6 +33,8 @@ enum Castling { CASTLE_WK = 1, CASTLE_WQ = 2, CASTLE_BK = 4, CASTLE_BQ = 8 };
 constexpr int NUM_PIECES = 12;
 constexpr int NUM_SQUARES = 64;
 constexpr int NUM_COLORS = 3;
+constexpr int BOARD_SIZE = 64;
+constexpr int RANK_SIZE = 8;
 
 class Board {
 public:
@@ -60,4 +62,5 @@ private:
     Piece charToPiece(char c);
     Square parseEnPassantSquare(char pos,int rank,Color tomove);
     void rebuildBitboards();
+    static char pieceToChar(Piece p);
 };
