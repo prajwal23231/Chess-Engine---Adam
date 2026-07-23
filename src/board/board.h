@@ -9,10 +9,10 @@ using U64 = uint64_t;
 enum Color { WHITE, BLACK, BOTH };
 
 enum Piece {
-    EMPTY,
+    EMPTY = -1,
 
-    WP, WN, WR, WB, WQ, WK,
-    BP, BN, BR, BB, BQ, BK
+    WP = 0, WN = 1, WR = 2, WB = 3, WQ = 4, WK = 5,
+    BP = 6, BN = 7, BR = 8, BB = 9, BQ = 10, BK = 11
 };
 
 enum Square {
@@ -59,4 +59,5 @@ private:
     
     Piece charToPiece(char c);
     Square parseEnPassantSquare(char pos,int rank,Color tomove);
+    void rebuildBitboards();
 };

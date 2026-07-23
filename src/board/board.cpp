@@ -210,7 +210,7 @@ bool Board::loadFEN(const string &fen){
     if(i==fen.size() || fen[i]==' ') return false;
 
 
-    
+
 
     // parsing field 6 -> fullmovenumber
     int fullmove=0;
@@ -235,9 +235,33 @@ bool Board::loadFEN(const string &fen){
     enPassant = s;
     halfmoveClock = halfmove;
     fullmoveNumber = fullmove;
+    rebuildBitboards();
+    updateOccupancies();
 
     return true;
 }
+
+
+void Board::rebuildBitboards(){
+    bitboards.fill(0);
+
+    for(int i=0;i<64;i++){
+        if(board[i]==EMPTY) continue;
+
+        Piece p = board[i];
+        bitboards[p] |= (1ULL<<i);
+    }
+}
+
+
+void Board::updateOccupancies(){
+    occupancies.fill(0);
+
+    occupancies[WHITE] = bitboards[WP] | bitboards[WN] | bitboards[WB] | bitboards[WK] | bitboards[WQ] | bitboards[WR];
+    occupancies[BLACK] = bitboards[BP] | bitboards[BN] | bitboards[BB] | bitboards[BK] | bitboards[BQ] | bitboards[BR];
+    occupancies[BOTH] = occupancies[WHITE] | occupancies[BLACK];
+}
+
 
 void Board::setStartingPosition(){
 
