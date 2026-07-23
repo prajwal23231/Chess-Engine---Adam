@@ -42,7 +42,7 @@ public:
     void setStartingPosition();
     void updateOccupancies();
     void print() const;
-    void loadFEN(const std::string &fen);
+    bool loadFEN(const std::string &fen);
 
 private:
     std::array<U64, NUM_PIECES> bitboards;
@@ -56,4 +56,7 @@ private:
 
     int halfmoveClock;
     int fullmoveNumber;
+    
+    Piece charToPiece(char c);
+    Square parseEnPassantSquare(char pos,int rank,Color tomove);
 };
