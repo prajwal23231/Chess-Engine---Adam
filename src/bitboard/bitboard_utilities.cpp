@@ -17,42 +17,25 @@ void Bitboard::clearBit(U64 &bb,int square){
     bb &= mask;
 }
 
-int Bitboard::popCount(U64 bb){
-    int count_piece=0;
-
-    while(bb){
-        count_piece += (bb&1);
-        bb>>=1;
-    }
-
-    return count_piece;
+int Bitboard::popCount(U64 bb) {
+    return __builtin_popcountll(bb);
 }
 
-int Bitboard::lsb(U64 bb){
-    int pos=0;
-
-    while(bb){
-        if(bb&1) return pos;
-
-        bb>>=1;
-        pos++;
-    }
-
-    return -1;
+int Bitboard::lsb(U64 bb) {
+    return bb ? __builtin_ctzll(bb) : -1;
 }
 
 int Bitboard::popLSB(U64& bb){
     int pos = lsb(bb);
-
     if(pos==-1) return pos;
 
-    clearBit(bb,pos);
+    bb &= bb-1;
     return pos;
 }
 
 void Bitboard::printBitboard(U64 bb){
     for(int i=RANK_SIZE; i>0; i--){
-        cout<<i<<"   ";
+        cout<<i<<"  ";
 
         for(int j=0; j<RANK_SIZE; j++){
             int square = (i-1)*RANK_SIZE + j;
@@ -63,11 +46,11 @@ void Bitboard::printBitboard(U64 bb){
         cout<<"\n";
     }
 
-    cout<<"\n    ";
+    cout<<"\n   ";
 
     for(char c='a'; c<='h'; c++){
         cout<<c<<" ";
     }
 
-    cout<<"\n\n";
+    cout<<"\n";
 }
