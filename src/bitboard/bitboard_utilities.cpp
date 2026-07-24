@@ -52,7 +52,7 @@ int Bitboard::popLSB(U64& bb){
 
 void Bitboard::printBitboard(U64 bb){
     for(int i=RANK_SIZE; i>0; i--){
-        cout<<i<<"  ";
+        cout<<i<<"   ";
 
         for(int j=0; j<RANK_SIZE; j++){
             int square = (i-1)*RANK_SIZE + j;
@@ -63,11 +63,11 @@ void Bitboard::printBitboard(U64 bb){
         cout<<"\n";
     }
 
-    cout<<"   ";
+    cout<<"\n    ";
 
     for(char c='a'; c<='h'; c++){
         cout<<c<<" ";
     }
 
-    cout<<"\n";
+    cout<<"\n\n";
 }

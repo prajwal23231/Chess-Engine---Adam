@@ -9,15 +9,21 @@ using namespace std;
 int main() {
     Attacks attacks;
 
-    Bitboard::printBitboard(attacks.getKnightAttack(H8));
-    Bitboard::printBitboard(attacks.getKnightAttack(A1));
+    U64 occ = 0;
 
-    Bitboard::printBitboard(attacks.getKingAttack(A1));
-    Bitboard::printBitboard(attacks.getKingAttack(H8));
+    occ |= 1ULL << E5; // North
+    occ |= 1ULL << G4; // East
+    occ |= 1ULL << E3; // South
+    occ |= 1ULL << B4; // West
 
-    Bitboard::printBitboard(attacks.getWhitePawnAttack(A2));
-    Bitboard::printBitboard(attacks.getWhitePawnAttack(H2));
+    occ |= 1ULL << G6; // NE
+    occ |= 1ULL << C6; // NW
+    occ |= 1ULL << G2; // SE
+    occ |= 1ULL << C2; // SW
 
-    Bitboard::printBitboard(attacks.getBlackPawnAttack(A7));
-    Bitboard::printBitboard(attacks.getBlackPawnAttack(H7));
+    Bitboard::printBitboard(occ);
+
+    Bitboard::printBitboard(attacks.getBishopAttack(E4, occ));
+    Bitboard::printBitboard(attacks.getRookAttack(E4, occ));
+    Bitboard::printBitboard(attacks.getQueenAttack(E4, occ));
 }
