@@ -45,28 +45,28 @@ Piece Board::charToPiece(char c){
     }
 }
 
-Square Board::parseEnPassantSquare(char pos,int rank,Color tomove){
+Square Board::parseEnPassantSquare(char file,int rank,Color tomove){
     if(rank==3 && tomove==BLACK){
-        if(pos=='a') return A3;
-        else if(pos=='b') return B3;
-        else if(pos=='c') return C3;
-        else if(pos=='d') return D3;
-        else if(pos=='e') return E3;
-        else if(pos=='f') return F3;
-        else if(pos=='g') return G3;
-        else if(pos=='h') return H3;
+        if(file=='a') return A3;
+        else if(file=='b') return B3;
+        else if(file=='c') return C3;
+        else if(file=='d') return D3;
+        else if(file=='e') return E3;
+        else if(file=='f') return F3;
+        else if(file=='g') return G3;
+        else if(file=='h') return H3;
         else return NO_SQUARE;
     }
 
     else if(rank==6 && tomove==WHITE){
-        if(pos=='a') return A6;
-        else if(pos=='b') return B6;
-        else if(pos=='c') return C6;
-        else if(pos=='d') return D6;
-        else if(pos=='e') return E6;
-        else if(pos=='f') return F6;
-        else if(pos=='g') return G6;
-        else if(pos=='h') return H6;
+        if(file=='a') return A6;
+        else if(file=='b') return B6;
+        else if(file=='c') return C6;
+        else if(file=='d') return D6;
+        else if(file=='e') return E6;
+        else if(file=='f') return F6;
+        else if(file=='g') return G6;
+        else if(file=='h') return H6;
         else return NO_SQUARE;
     }
 
@@ -98,7 +98,7 @@ bool Board::loadFEN(const string &fen){
             return false;
         }
 
-        // empty pos on board
+        // empty file on board
         else if(fen[i]>='0' && fen[i]<='9'){
             int num = fen[i] - '0';
 
@@ -298,12 +298,12 @@ char Board::pieceToChar(Piece p){
 
 void Board::print() const{
     for(size_t i=RANK_SIZE ; i>0 ; i--){
-        size_t start_pos = (i-1)*RANK_SIZE;
+        size_t start_file = (i-1)*RANK_SIZE;
 
         cout<<i<<"  ";
 
         for(size_t j=0 ; j<RANK_SIZE ; j++){
-            char c = pieceToChar(board[start_pos+j]);
+            char c = pieceToChar(board[start_file+j]);
             cout<<c<<" ";
         }
 

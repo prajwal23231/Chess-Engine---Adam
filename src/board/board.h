@@ -1,3 +1,4 @@
+#pragma once
 #include "utils/type.h"
 
 #include <array>
