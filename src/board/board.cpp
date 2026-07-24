@@ -79,7 +79,7 @@ bool Board::loadFEN(const string &fen){
 
     // filling the board with the help of field 1
     int i=0, j=BOARD_SIZE-RANK_SIZE , cur=BOARD_SIZE-RANK_SIZE;
-    array<Piece, NUM_SQUARES> temp_board;
+    array<Piece, BOARD_SIZE> temp_board;
     temp_board.fill(EMPTY);
 
 

@@ -1,10 +1,7 @@
-#pragma once
+#include "utils/type.h"
 
 #include <array>
 #include <string>
-#include <cstdint>
-
-using U64 = uint64_t;
 
 enum Color { WHITE, BLACK, BOTH };
 
@@ -30,12 +27,6 @@ enum Square {
 
 enum Castling { CASTLE_WK = 1, CASTLE_WQ = 2, CASTLE_BK = 4, CASTLE_BQ = 8 };
 
-constexpr int NUM_PIECES = 12;
-constexpr int NUM_SQUARES = 64;
-constexpr int NUM_COLORS = 3;
-constexpr int BOARD_SIZE = 64;
-constexpr int RANK_SIZE = 8;
-
 class Board {
 public:
     Board();
@@ -48,7 +39,7 @@ public:
 
 private:
     std::array<U64, NUM_PIECES> bitboards;
-    std::array<Piece, NUM_SQUARES> board;
+    std::array<Piece, BOARD_SIZE> board;
     std::array<U64, NUM_COLORS> occupancies;
 
     Color sideToMove;
