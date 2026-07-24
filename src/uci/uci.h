@@ -1,4 +1,4 @@
-#pragma once 
+#include "utils/type.h"
 #include <string>
 
 class UCI{
