@@ -1,8 +1,15 @@
 #include "attacks.h"
 using namespace std;
 
-inline int getRank(int sq) { return sq / 8; }
-inline int getFile(int sq) { return sq % 8; }
+namespace{
+    constexpr int kingMove[8][2] = {{-1,0}, {1,0}, {-1,-1}, {1,1}, {1,-1}, {-1,1}, {0,-1}, {0,1}};
+    constexpr int knightMove[8][2] = {{2,1},{2,-1},{1,-2},{-1,-2},{1,2},{-1,2},{-2,1},{-2,-1}};
+    constexpr int whitePawnMove[2][2] = {{1,-1}, {1,1}};
+    constexpr int blackPawnMove[2][2] = {{-1,-1}, {-1,1}};
+
+    constexpr int getFile(int sq) { return sq % 8; }
+    constexpr int getRank(int sq) { return sq / 8; }
+}
 
 Attacks::Attacks(){
     knightAttack.fill(0);
@@ -12,7 +19,6 @@ Attacks::Attacks(){
 
 
     // knight attack generation
-    static constexpr int attack_dir[8][2] = {{2,1},{2,-1},{1,-2},{-1,-2},{1,2},{-1,2},{-2,1},{-2,-1}};
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square sq = static_cast<Square>(i);
@@ -20,8 +26,8 @@ Attacks::Attacks(){
         int cur_file = getFile(sq);
 
         for(int j=0; j<8; j++){
-            int new_rank = cur_rank + attack_dir[j][0];
-            int new_file = cur_file + attack_dir[j][1];
+            int new_rank = cur_rank + knightMove[j][0];
+            int new_file = cur_file + knightMove[j][1];
 
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
@@ -32,7 +38,6 @@ Attacks::Attacks(){
 
 
     // king attack generation
-    static constexpr int king_move[8][2] = {{-1,0}, {1,0}, {-1,-1}, {1,1}, {1,-1}, {-1,1}, {0,-1}, {0,1}};
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square sq = static_cast<Square>(i);
@@ -40,8 +45,8 @@ Attacks::Attacks(){
         int cur_file = getFile(sq);
 
         for(int j=0; j<8; j++){
-            int new_rank = cur_rank + king_move[j][0];
-            int new_file = cur_file + king_move[j][1];
+            int new_rank = cur_rank + kingMove[j][0];
+            int new_file = cur_file + kingMove[j][1];
 
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
@@ -52,7 +57,6 @@ Attacks::Attacks(){
 
 
     // white pawn move gen
-    static constexpr int white_pawn[2][2] = {{1,-1}, {1,1}};
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square sq = static_cast<Square>(i);
@@ -60,8 +64,8 @@ Attacks::Attacks(){
         int cur_file = getFile(sq);
 
         for(int j=0; j<2; j++){
-            int new_rank = cur_rank + white_pawn[j][0];
-            int new_file = cur_file + white_pawn[j][1];
+            int new_rank = cur_rank + whitePawnMove[j][0];
+            int new_file = cur_file + whitePawnMove[j][1];
 
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
@@ -73,7 +77,6 @@ Attacks::Attacks(){
 
 
     // black pawn move gen
-    static constexpr int black_pawn[2][2] = {{-1,-1}, {-1,1}};
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square sq = static_cast<Square>(i);
@@ -81,8 +84,8 @@ Attacks::Attacks(){
         int cur_file = getFile(sq);
 
         for(int j=0; j<2; j++){
-            int new_rank = cur_rank + black_pawn[j][0];
-            int new_file = cur_file + black_pawn[j][1];
+            int new_rank = cur_rank + blackPawnMove[j][0];
+            int new_file = cur_file + blackPawnMove[j][1];
 
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
@@ -92,24 +95,24 @@ Attacks::Attacks(){
     }
 }
 
-U64 Attacks::getKnightAttack(Square square) {
+U64 Attacks::getKnightAttack(Square square) const{
     return knightAttack[square];
 }
 
-U64 Attacks::getKingAttack(Square square) {
+U64 Attacks::getKingAttack(Square square) const{
     return kingAttack[square];
 }
 
-U64 Attacks::getWhitePawnAttack(Square square) {
+U64 Attacks::getWhitePawnAttack(Square square) const{
     return whitePawnAttack[square];
 }
 
-U64 Attacks::getBlackPawnAttack(Square square) {
+U64 Attacks::getBlackPawnAttack(Square square) const{
     return blackPawnAttack[square];
 }
 
-U64 Attacks::getBishopAttack(Square square, U64 occupancy){
-    U64 attack_board = 0;
+U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
+    U64 bishopAttack = 0;
 
     int cur_rank = getRank(square);
     int cur_file = getFile(square);
@@ -119,7 +122,7 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        bishopAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank++, new_file++;
@@ -131,7 +134,7 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        bishopAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank++, new_file--;
@@ -143,7 +146,7 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        bishopAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank--, new_file--;
@@ -155,17 +158,17 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        bishopAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank--, new_file++;
     }
 
-    return attack_board;
+    return bishopAttack;
 }
 
-U64 Attacks::getRookAttack(Square square, U64 occupancy){
-    U64 attack_board = 0;
+U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
+    U64 RookAttack = 0;
 
     int cur_rank = getRank(square);
     int cur_file = getFile(square);
@@ -175,7 +178,7 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        RookAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank++;
@@ -187,7 +190,7 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        RookAttack |= mask;
 
         if(occupancy & mask) break;
         new_file++;
@@ -199,7 +202,7 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        RookAttack |= mask;
 
         if(occupancy & mask) break;
         new_rank--;
@@ -211,15 +214,15 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy){
         Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
         U64 mask = (1ULL<<new_sq);
-        attack_board |= mask;
+        RookAttack |= mask;
 
         if(occupancy & mask) break;
         new_file--;
     }
 
-    return attack_board;
+    return RookAttack;
 }
 
-U64 Attacks::getQueenAttack(Square square, U64 occupancy){
+U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
     return getBishopAttack(square, occupancy) | getRookAttack(square, occupancy);
 }

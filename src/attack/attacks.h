@@ -6,15 +6,15 @@ class Attacks{
 public:
     Attacks();
     
-    U64 getKnightAttack(Square square);
-    U64 getKingAttack(Square square);
-    U64 getBlackPawnAttack(Square square);
-    U64 getWhitePawnAttack(Square square);
+    U64 getKnightAttack(Square square) const;
+    U64 getKingAttack(Square square) const;
+    U64 getBlackPawnAttack(Square square) const;
+    U64 getWhitePawnAttack(Square square) const;
 
     // for sliding pices
-    U64 getBishopAttack(Square square, U64 occupancy);
-    U64 getQueenAttack(Square square, U64 occupancy);
-    U64 getRookAttack(Square square, U64 occupancy);
+    U64 getBishopAttack(Square square, U64 occupancy) const;
+    U64 getQueenAttack(Square square, U64 occupancy) const;
+    U64 getRookAttack(Square square, U64 occupancy) const;
 
 private:
     // precoumputed
