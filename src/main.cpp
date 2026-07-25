@@ -1,6 +1,7 @@
 #include "uci/uci.h"
 #include "board/board.h"
-#include "bitboard/bitboard_utilities.h"
+#include "utils/bitboard_utilities.h"
+#include "utils/type.h"
 #include "attack/attacks.h"
 #include <iostream>
 

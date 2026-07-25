@@ -1,6 +1,6 @@
 #include "bitboard_utilities.h"
 #include <iostream>
-using namespace::std;
+using namespace std;
 
 bool Bitboard::getBit(U64 bb,int square) {
     U64 mask = (1ULL<<square);

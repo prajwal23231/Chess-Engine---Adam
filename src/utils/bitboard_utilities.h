@@ -1,5 +1,5 @@
 #pragma once
-#include "utils/type.h"
+#include "type.h"
 
 namespace Bitboard{
 

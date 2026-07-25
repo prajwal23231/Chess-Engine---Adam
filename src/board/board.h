@@ -13,6 +13,11 @@ public:
     void updateOccupancies();
     void print() const;
     bool loadFEN(const std::string &fen);
+    Color getMovingSide() const;
+    Square getEnPassant() const;
+    U64 getBitboard(Piece p) const;
+    U64 getOccupancy(Color c) const;
+    Piece getPieceBoard(Square s) const;
 
 private:
     std::array<U64, NUM_PIECES> bitboards;

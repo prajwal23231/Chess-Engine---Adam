@@ -318,3 +318,24 @@ void Board::print() const{
 
     cout<<"\n";
 }
+
+
+Color Board::getMovingSide() const{
+    return sideToMove;
+}
+
+Square Board::getEnPassant() const{
+    return enPassant;
+}
+
+U64 Board::getBitboard(Piece p) const{
+    return bitboards[p];
+}
+
+U64 Board::getOccupancy(Color c) const{
+    return occupancies[c];
+}
+
+Piece Board::getPieceBoard(Square s) const{
+    return board[s];
+}

@@ -23,14 +23,14 @@ Move::Move(
 
 
 bool Move::isCapture() const{
-    U32 captured = (move >> capturedPieceShift) & pieceMask;
-    return captured;
+    U32 flag = (move >> flagShift) & flagMask;
+    return flag==capture;
 }
 
 
 bool Move::isPromotion() const{
-    U32 promotion = (move >> promoteShift) & pieceMask;
-    return promotion;
+    U32 flag = (move >> flagShift) & flagMask;
+    return flag==promotion;
 }
 
 
