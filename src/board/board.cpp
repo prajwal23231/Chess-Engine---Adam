@@ -339,3 +339,7 @@ U64 Board::getOccupancy(Color c) const{
 Piece Board::getPieceBoard(Square s) const{
     return board[s];
 }
+
+int Board::getCastlingRights() const{
+    return castlingRights;
+}

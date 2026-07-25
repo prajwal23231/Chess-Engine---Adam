@@ -20,6 +20,7 @@ void MoveGenerator::generateMoves(vector<Move>& moves) const{
     generateQueenMoves(moves);
 }
 
+
 void MoveGenerator::generateKnightMoves(vector<Move>& moves) const{
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WN : BN);
@@ -36,68 +37,15 @@ void MoveGenerator::generateKnightMoves(vector<Move>& moves) const{
 
         while(all_attack != 0){
             Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece Captured = board.getPieceBoard(dest);
+            Piece captured = board.getPieceBoard(dest);
 
-            MoveFlag f = (Captured == EMPTY ? quiet : capture);
+            MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, Captured, EMPTY, f);
+            moves.emplace_back(s, dest, p, captured, EMPTY, f);
         }
     }
 }
 
-
-void MoveGenerator::generateBishopMoves(vector<Move>& moves) const{
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide==WHITE ? WB : BB);
-
-    U64 bb = board.getBitboard(p);
-    U64 both_occ =  board.getOccupancy(BOTH);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while(bb != 0){
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getBishopAttack(s, both_occ);
-        
-        all_attack = all_attack & (~movingSideOcc);
-
-        while(all_attack != 0){
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece Captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (Captured == EMPTY ? quiet : capture);
-
-            moves.emplace_back(s, dest, p, Captured, EMPTY, f);
-        }
-    }
-}
-
-
-void MoveGenerator::generateQueenMoves(vector<Move>& moves) const{
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide==WHITE ? WQ : BQ);
-
-    U64 bb = board.getBitboard(p);
-    U64 both_occ =  board.getOccupancy(BOTH);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while(bb != 0){
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getQueenAttack(s, both_occ);
-        
-        all_attack = all_attack & (~movingSideOcc);
-
-        while(all_attack != 0){
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece Captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (Captured == EMPTY ? quiet : capture);
-
-            moves.emplace_back(s, dest, p, Captured, EMPTY, f);
-        }
-    }
-}
 
 void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
     Color movingSide = board.getMovingSide();
@@ -118,7 +66,6 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
     const int first_rank = (movingSide == WHITE ? 1 : 6);
 
 
-
     while(bb != 0){
         Square s = static_cast<Square>(popLSB(bb));
 
@@ -133,30 +80,30 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
 
         while(all_attack != 0){
             Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece Captured = board.getPieceBoard(dest);
+            Piece captured = board.getPieceBoard(dest);
 
             // enpassant check
             int cur_rank = dest / RANK_SIZE;
 
             MoveFlag flag = capture;
 
-            if(board.getEnPassant() == dest && Captured == EMPTY){
+            if(board.getEnPassant() == dest && captured == EMPTY){
                 flag = enPassant;
-                Captured = (movingSide == WHITE ? BP : WP);
+                captured = (movingSide == WHITE ? BP : WP);
             }
 
-            if(Captured == EMPTY && flag != enPassant) continue;
+            if(captured == EMPTY && flag != enPassant) continue;
 
 
             // promotion check
             if(cur_rank == fin_rank ) {
-                for(int i=0; i<4; i++){
-                    moves.emplace_back(s, dest, p, Captured, all_prom[i], promotion_capture);
+                for(Piece prom : all_prom){
+                    moves.emplace_back(s, dest, p, captured, prom, promotion_capture);
                 }
             }
 
             else{
-                moves.emplace_back(s, dest, p, Captured, EMPTY, flag);
+                moves.emplace_back(s, dest, p, captured, EMPTY, flag);
             }
         }
 
@@ -172,8 +119,8 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
 
         // promotion check
         if(new_rank == fin_rank){
-            for(int i=0; i<4; i++){
-                moves.emplace_back(s, single_push, p, EMPTY, all_prom[i], promotion);
+            for(Piece prom : all_prom){
+                moves.emplace_back(s, single_push, p, EMPTY, prom, promotion);
             }
         }
 
@@ -196,3 +143,146 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
 
 
 
+void MoveGenerator::generateKingMoves(vector<Move>& moves) const{
+    Color movingSide = board.getMovingSide();
+    Piece p = (movingSide==WHITE ? WK : BK);
+
+    U64 bb = board.getBitboard(p);
+    U64 movingSideOcc = board.getOccupancy(movingSide);
+
+    // capture or normal move
+    while(bb != 0){
+        Square s = static_cast<Square>(popLSB(bb));
+
+        U64 all_attack = attacks.getKingAttack(s);
+        
+        all_attack = all_attack & (~movingSideOcc);
+
+        while(all_attack != 0){
+            Square dest = static_cast<Square>(popLSB(all_attack));
+            Piece captured = board.getPieceBoard(dest);
+
+            MoveFlag f = (captured == EMPTY ? quiet : capture);
+
+            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+        }
+    }
+
+
+    // castling part
+    int castle = board.getCastlingRights();
+
+    if(movingSide == WHITE){
+        if(castle & CASTLE_WK){
+            // checking for empty path
+            if(board.getPieceBoard(F1) == EMPTY && board.getPieceBoard(G1) == EMPTY){
+                moves.emplace_back(E1, G1, p, EMPTY, EMPTY, kingSideCastle);
+            }
+        }
+
+        if(castle & CASTLE_WQ){
+            // checking for empty path
+            if(board.getPieceBoard(D1) == EMPTY && board.getPieceBoard(C1) == EMPTY && board.getPieceBoard(B1) == EMPTY){
+                moves.emplace_back(E1, C1, p, EMPTY, EMPTY, queenSideCastle);
+            }
+        }
+    }
+
+
+    else{
+        if(castle & CASTLE_BK){
+            // checking for empty path
+            if(board.getPieceBoard(F8) == EMPTY && board.getPieceBoard(G8) == EMPTY){
+                moves.emplace_back(E8, G8, p, EMPTY, EMPTY, kingSideCastle);
+            }
+        }
+
+        if(castle & CASTLE_BQ){
+            // checking for empty path
+            if(board.getPieceBoard(D8) == EMPTY && board.getPieceBoard(C8) == EMPTY && board.getPieceBoard(B8) == EMPTY){
+                moves.emplace_back(E8, C8, p, EMPTY, EMPTY, queenSideCastle);
+            }
+        }
+    }
+}
+
+
+void MoveGenerator::generateBishopMoves(vector<Move>& moves) const{
+    Color movingSide = board.getMovingSide();
+    Piece p = (movingSide==WHITE ? WB : BB);
+
+    U64 bb = board.getBitboard(p);
+    U64 both_occ =  board.getOccupancy(BOTH);
+    U64 movingSideOcc = board.getOccupancy(movingSide);
+
+    while(bb != 0){
+        Square s = static_cast<Square>(popLSB(bb));
+
+        U64 all_attack = attacks.getBishopAttack(s, both_occ);
+        
+        all_attack = all_attack & (~movingSideOcc);
+
+        while(all_attack != 0){
+            Square dest = static_cast<Square>(popLSB(all_attack));
+            Piece captured = board.getPieceBoard(dest);
+
+            MoveFlag f = (captured == EMPTY ? quiet : capture);
+
+            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+        }
+    }
+}
+
+
+void MoveGenerator::generateRookMoves(vector<Move>& moves) const{
+    Color movingSide = board.getMovingSide();
+    Piece p = (movingSide==WHITE ? WR : BR);
+
+    U64 bb = board.getBitboard(p);
+    U64 both_occ =  board.getOccupancy(BOTH);
+    U64 movingSideOcc = board.getOccupancy(movingSide);
+
+    while(bb != 0){
+        Square s = static_cast<Square>(popLSB(bb));
+
+        U64 all_attack = attacks.getRookAttack(s, both_occ);
+        
+        all_attack = all_attack & (~movingSideOcc);
+
+        while(all_attack != 0){
+            Square dest = static_cast<Square>(popLSB(all_attack));
+            Piece captured = board.getPieceBoard(dest);
+
+            MoveFlag f = (captured == EMPTY ? quiet : capture);
+
+            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+        }
+    }
+}
+
+
+void MoveGenerator::generateQueenMoves(vector<Move>& moves) const{
+    Color movingSide = board.getMovingSide();
+    Piece p = (movingSide==WHITE ? WQ : BQ);
+
+    U64 bb = board.getBitboard(p);
+    U64 both_occ =  board.getOccupancy(BOTH);
+    U64 movingSideOcc = board.getOccupancy(movingSide);
+
+    while(bb != 0){
+        Square s = static_cast<Square>(popLSB(bb));
+
+        U64 all_attack = attacks.getQueenAttack(s, both_occ);
+        
+        all_attack = all_attack & (~movingSideOcc);
+
+        while(all_attack != 0){
+            Square dest = static_cast<Square>(popLSB(all_attack));
+            Piece captured = board.getPieceBoard(dest);
+
+            MoveFlag f = (captured == EMPTY ? quiet : capture);
+
+            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+        }
+    }
+}

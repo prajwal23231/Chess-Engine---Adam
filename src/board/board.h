@@ -18,6 +18,7 @@ public:
     U64 getBitboard(Piece p) const;
     U64 getOccupancy(Color c) const;
     Piece getPieceBoard(Square s) const;
+    int getCastlingRights() const;
 
 private:
     std::array<U64, NUM_PIECES> bitboards;
