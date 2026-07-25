@@ -1,7 +1,6 @@
 #pragma once
 #include "utils/type.h"
 #include <array>
-#include "board/board.h"
 
 class Attacks{
 public:
