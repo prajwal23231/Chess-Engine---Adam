@@ -1,7 +1,7 @@
 #include "board/board.h"
 #include "attack/attacks.h"
-#include "move.h"
-#include "moveGenerator.h"
+#include "moves/move.h"
+#include "moves/moveGenerator.h"
 #include <iostream>
 #include <vector>
 #include <string>

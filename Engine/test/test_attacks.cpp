@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cassert>
 #include <iomanip>
-#include "attacks.h"
-#include "bitboard/bitboard_utilities.h"
+#include "attack/attacks.h"
+#include "utils/bitboard_utilities.h"
 
 using namespace std;
 using namespace Bitboard;

@@ -1,5 +1,5 @@
 // test_move_all.cpp
-#include "move.h"
+#include "moves/move.h"
 #include <iostream>
 #include <vector>
 #include <string>
