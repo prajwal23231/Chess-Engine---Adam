@@ -357,7 +357,7 @@ int Board::getFullMoveNumber() const{
 
 
 bool Board::makeMove(const Move &move){
-    assert(ply<=MAX_PLYS);
+    assert(ply<MAX_PLYS);
 
     history[ply++] = {
         castlingRights,
