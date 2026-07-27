@@ -11,12 +11,28 @@ namespace{
 };
 
 Magic::Magic(){
+    int sz1=0, sz2=0, relBits1=0, relBits2=0;
+
     for(int x=0; x<BOARD_SIZE; x++){
         Square s = static_cast<Square>(x);
 
-        bishopMasks[s] = bishopMask(s);
-        rookMasks[s] = rookMask(s);
+        bishopMagic[s].mask = bishopMask(s);
+        rookMagic[s].mask = rookMask(s);
+
+        // getting size
+        relBits1 = popCount(bishopMagic[s].mask);
+        sz1 += (1ULL<<relBits1);
+
+        relBits2 = popCount(rookMagic[s].mask);
+        sz2 += (1ULL<<relBits2);
+
+        bishopMagic[s].shift = 64 - relBits1;
+        rookMagic[s].shift = 64 - relBits2;
     }
+
+
+    bishopTable.resize(sz1);
+    rookTable.resize(sz2);
 
     buildBishopTable();
     buildRookTable();
@@ -131,30 +147,38 @@ U64 Magic::getRookAttackOTF(Square square, U64 occupancy) const{
 
 
 void Magic::buildBishopTable(){
+    size_t offset=0;
+
     for(int x=0; x<BOARD_SIZE; x++){
         Square square = static_cast<Square>(x);
-        int relevantBits = popCount(bishopMasks[square]);
+        int relevantBits = 64 - bishopMagic[square].shift;
+        int maxInd = 1ULL<<relevantBits;
 
-        int maxInd = 1<<relevantBits;
+        bishopMagic[square].attacks = &bishopTable[offset];
 
         for(int index=0; index<maxInd; index++){
-            U64 occ = setOccupancy(index, relevantBits, bishopMasks[square]);
-            bishopTable[square].push_back(getBishopAttackOTF(square, occ));
+            U64 occ = setOccupancy(index, relevantBits, bishopMagic[square].mask);
+            bishopTable[offset] = getBishopAttackOTF(square, occ);
+            ++offset;
         }
     }
 }
 
 
 void Magic::buildRookTable(){
+    size_t offset=0;
+
     for(int x=0; x<BOARD_SIZE; x++){
         Square square = static_cast<Square>(x);
-        int relevantBits = popCount(rookMasks[square]);
+        int relevantBits = 64 - rookMagic[square].shift;
+        int maxInd = 1ULL<<relevantBits;
 
-        int maxInd = 1<<relevantBits;
+        rookMagic[square].attacks = &rookTable[offset];
 
         for(int index=0; index<maxInd; index++){
-            U64 occ = setOccupancy(index, relevantBits, rookMasks[square]);
-            rookTable[square].push_back(getRookAttackOTF(square, occ));
+            U64 occ = setOccupancy(index, relevantBits, rookMagic[square].mask);
+            rookTable[offset] = getRookAttackOTF(square, occ);
+            ++offset;
         }
     }
 }

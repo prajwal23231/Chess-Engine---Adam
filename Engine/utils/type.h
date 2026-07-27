@@ -3,6 +3,7 @@
 
 using U64 = uint64_t;
 using U32 = uint32_t;
+using U8 = uint8_t;
 
 constexpr int NUM_PIECES = 12;
 constexpr int NUM_COLORS = 3;

@@ -4,15 +4,26 @@
 #include <array>
 #include <vector>
 
+
+struct MagicEntry
+{
+    U64 mask;
+    U64 magic;
+    uint8_t shift;
+    const U64* attacks;
+};
+
+
 class Magic{
 public:
     Magic();
 
 private:
-    std::array<U64, BOARD_SIZE> bishopMasks;
-    std::array<U64, BOARD_SIZE> rookMasks;
-    std::array<std::vector<U64>, BOARD_SIZE> bishopTable;
-    std::array<std::vector<U64>, BOARD_SIZE> rookTable;
+    std::array<MagicEntry, BOARD_SIZE> bishopMagic;
+    std::array<MagicEntry, BOARD_SIZE> rookMagic;
+
+    std::vector<U64> bishopTable;
+    std::vector<U64> rookTable;
 
     // helper functions
     U64 bishopMask(Square square) const;
