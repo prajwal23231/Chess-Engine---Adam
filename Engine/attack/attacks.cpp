@@ -12,7 +12,7 @@ namespace{
     constexpr int getRank(int sq) { return sq / 8; }
 }
 
-Attacks::Attacks(){
+Attacks::Attacks() : magicBb(){
     knightAttack.fill(0);
     kingAttack.fill(0);
     blackPawnAttack.fill(0);

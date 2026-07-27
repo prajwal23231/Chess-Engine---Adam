@@ -1,6 +1,7 @@
 #pragma once
 #include "utils/type.h"
 #include "utils/bitboard_utilities.h"
+#include "magic.h"
 #include <array>
 
 class Attacks{
@@ -23,4 +24,6 @@ private:
     std::array<U64,BOARD_SIZE> kingAttack;
     std::array<U64,BOARD_SIZE> blackPawnAttack;
     std::array<U64,BOARD_SIZE> whitePawnAttack;
+
+    Magic magicBb;
 };
