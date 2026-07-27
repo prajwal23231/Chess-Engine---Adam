@@ -543,3 +543,112 @@ bool Board::makeMove(const Move &move){
 
     return true;
 }
+
+
+void Board::undoMove(const Move &move){
+    assert(ply > 0);
+    UndoInfo data = history[--ply];
+
+    castlingRights = data.castlingRights;
+    enPassant = data.enpassant;
+    halfmoveClock = data.halfMoveClock;
+
+    Piece moved = move.getMovedPiece();
+    Piece captured = move.getCapturedPiece();
+    Square from = move.getFrom();
+    Square to = move.getTo();
+    MoveFlag flag = move.getMoveFlag();
+    Piece promotionPiece = move.getPromotion();
+
+    Color opp = (sideToMove == WHITE ? BLACK : WHITE);
+
+    U64 fromMask = (1ULL<<from);
+    U64 toMask = (1ULL<<to);
+
+
+    // bringing piece back to from
+    bitboards[moved] |= fromMask;
+    board[from] = moved;
+    occupancies[opp] |= fromMask;
+    occupancies[BOTH] |= fromMask;
+    occupancies[opp] &= ~toMask;
+    occupancies[BOTH] &= ~toMask;
+    board[to] = EMPTY;
+
+    if(move.isPromotion()){
+        bitboards[promotionPiece] &= ~toMask;
+    }
+
+    else{
+        bitboards[moved] &= ~toMask;
+    }
+
+    
+    if(move.isEnPassant()){
+        int rankOffset = (sideToMove == WHITE ? 8 : -8);
+        Square s = static_cast<Square>(to + rankOffset);
+
+        bitboards[captured] |= (1ULL<<s);
+        board[s] = captured;
+        occupancies[sideToMove] |= (1ULL<<s);
+        occupancies[BOTH] |= (1ULL<<s);
+    }
+
+    else if(move.isCapture()){
+        bitboards[captured] |= toMask;
+        occupancies[sideToMove] |= toMask;
+        board[to] = captured;
+        occupancies[BOTH] |= toMask;
+    }
+
+
+
+    // checking for castling
+    if((flag  == kingSideCastle) || (flag == queenSideCastle)){
+        Square source = NO_SQUARE;
+        Square dest = NO_SQUARE;
+        Piece p = EMPTY;
+
+        if(opp == WHITE){
+            if(flag == kingSideCastle){
+                source = H1;
+                dest = F1;
+            }
+
+            else{
+                source = A1;
+                dest = D1;
+            }
+
+            p = WR;
+        }
+
+        else{
+            if(flag == kingSideCastle){
+                source = H8;
+                dest = F8;
+            }
+
+            else{
+                source = A8;
+                dest = D8;
+            }
+
+            p = BR;
+        }
+
+
+        bitboards[p] |= (1ULL<<source);
+        bitboards[p] &= ~(1ULL<<dest);
+        board[source] = p;
+        board[dest] = EMPTY;
+        occupancies[opp] |= (1ULL<<source);
+        occupancies[opp] &= ~(1ULL<<dest);
+        occupancies[BOTH] |= (1ULL<<source);
+        occupancies[BOTH] &= ~(1ULL<<dest);
+    }
+
+
+    sideToMove = opp;
+    if(sideToMove == BLACK) --fullmoveNumber;
+}
