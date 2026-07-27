@@ -648,7 +648,7 @@ void Board::undoMove(const Move &move){
         occupancies[BOTH] &= ~(1ULL<<dest);
     }
 
-
+    
     sideToMove = opp;
     if(sideToMove == BLACK) --fullmoveNumber;
 }
