@@ -23,6 +23,7 @@ void Board::clear(){
     
     halfmoveClock = 0;
     fullmoveNumber = 1;
+    ply=0;
 }
 
 Piece Board::charToPiece(char c){
@@ -248,6 +249,8 @@ bool Board::loadFEN(const string &fen){
     rebuildBitboards();
     updateOccupancies();
 
+    ply=0;
+
     return true;
 }
 
@@ -342,4 +345,201 @@ Piece Board::getPieceBoard(Square s) const{
 
 int Board::getCastlingRights() const{
     return castlingRights;
+}
+
+int Board::getHalfMoveClock() const{
+    return halfmoveClock;
+}
+
+int Board::getFullMoveNumber() const{
+    return fullmoveNumber;
+}
+
+
+bool Board::makeMove(const Move &move){
+    assert(ply<=MAX_PLYS);
+
+    history[ply++] = {
+        castlingRights,
+        enPassant,
+        halfmoveClock
+    };
+
+    Piece moved = move.getMovedPiece();
+    Piece captured = move.getCapturedPiece();
+    Square from = move.getFrom();
+    Square to = move.getTo();
+    MoveFlag flag = move.getMoveFlag();
+    Piece promotionPiece = move.getPromotion();
+
+    Color opp = (sideToMove == WHITE ? BLACK : WHITE);
+
+    assert(board[from]==moved);
+    if(!move.isEnPassant()) assert(board[to]==captured);
+
+    U64 fromMask = (1ULL<<from);
+    U64 toMask = (1ULL<<to);
+
+    // removing the moved piece from source
+    occupancies[sideToMove] &= ~fromMask;
+    occupancies[BOTH] &= ~fromMask;
+    board[from] = EMPTY;
+    bitboards[moved] &= ~fromMask;
+
+    // placing moved piece to dest
+    occupancies[BOTH] |= toMask;
+    occupancies[sideToMove] |= toMask;
+
+    if(move.isPromotion()){
+        bitboards[promotionPiece] |= toMask;
+        board[to] = promotionPiece;
+    }
+
+    else{
+        bitboards[moved] |= toMask;
+        board[to] = moved;
+    }
+
+
+    // removing the captured piece
+    if(move.isEnPassant()){
+        int rankOffset = (sideToMove == WHITE ? -8 : 8);
+        Square s = static_cast<Square>(to + rankOffset);
+
+        bitboards[captured] &= ~(1ULL<<s);
+        board[s] = EMPTY;
+        occupancies[opp] &= ~(1ULL<<s);
+        occupancies[BOTH] &= ~(1ULL<<s);
+    }
+
+    else if(move.isCapture()){
+        bitboards[captured] &= ~toMask;
+        occupancies[opp] &= ~toMask;
+    }
+
+
+
+    // checking for double pawn push
+    if(flag == doublePawnPush){
+        int rankOffset = (sideToMove == WHITE ? -8 : 8);
+        enPassant = static_cast<Square>(to + rankOffset);
+    }
+
+
+    // checking for castling
+    if((flag  == kingSideCastle) || (flag == queenSideCastle)){
+        Square source = NO_SQUARE;
+        Square dest = NO_SQUARE;
+        Piece p = EMPTY;
+
+        if(sideToMove == WHITE){
+            if(flag == kingSideCastle){
+                castlingRights &= (~CASTLE_WK);
+                source = H1;
+                dest = F1;
+            }
+
+            else{
+                castlingRights &= (~CASTLE_WQ);
+                source = A1;
+                dest = D1;
+            }
+
+            p = WR;
+        }
+
+        else{
+            if(flag == kingSideCastle){
+                castlingRights &= (~CASTLE_BK);
+                source = H8;
+                dest = F8;
+            }
+
+            else{
+                castlingRights &= (~CASTLE_BQ);
+                source = A8;
+                dest = D8;
+            }
+
+            p = BR;
+        }
+
+
+        bitboards[p] &= ~(1ULL<<source);
+        bitboards[p] |= (1ULL<<dest);
+        board[source] = EMPTY;
+        board[dest] = p;
+        occupancies[sideToMove] &= ~(1ULL<<source);
+        occupancies[sideToMove] |= (1ULL<<dest);
+        occupancies[BOTH] &= ~(1ULL<<source);
+        occupancies[BOTH] |= (1ULL<<dest);
+    }
+
+
+
+    // removing castling rights
+    if(moved == WK){
+        if(castlingRights & (CASTLE_WK | CASTLE_WQ)){
+            castlingRights &= ~(CASTLE_WK | CASTLE_WQ);
+        }
+    }
+
+    else if(moved == BK){
+        if(castlingRights & (CASTLE_BK | CASTLE_BQ)){
+            castlingRights &= ~(CASTLE_BK | CASTLE_BQ);
+        }
+    }
+
+    else if(moved == WR){
+        if(from == A1){
+            castlingRights &= ~CASTLE_WQ;
+        }
+
+        else if(from == H1){
+            castlingRights &= ~CASTLE_WK;
+        }
+    }
+
+
+    else if(moved == BR){
+        if(from == A8){
+            castlingRights &= ~CASTLE_BQ;
+        }
+
+        else if(from == H8){
+            castlingRights &= ~CASTLE_BK;
+        }
+    }
+
+
+    else if(captured == BR){
+        if(to == A8){
+            castlingRights &= ~CASTLE_BQ;
+        }
+
+        else if(to == H8){
+            castlingRights &= ~CASTLE_BK;
+        }
+    }
+
+    else if(captured == WR){
+        if(to == A1){
+            castlingRights &= ~CASTLE_WQ;
+        }
+
+        else if(to == H1){
+            castlingRights &= ~CASTLE_WK;
+        }
+    }
+
+
+
+    if(moved == WP || moved == BP || move.isCapture()) halfmoveClock = 0;
+    else ++halfmoveClock;
+
+    sideToMove = opp;
+    if(sideToMove == WHITE) ++fullmoveNumber;
+    if(flag != doublePawnPush) enPassant = NO_SQUARE;
+
+    return true;
 }

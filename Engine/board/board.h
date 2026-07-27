@@ -1,6 +1,7 @@
 #pragma once
 #include "utils/type.h"
-
+#include "moves/undomove.h"
+#include "moves/move.h"
 #include <array>
 #include <string>
 
@@ -10,7 +11,6 @@ public:
 
     void clear();
     void setStartingPosition();
-    void updateOccupancies();
     void print() const;
     bool loadFEN(const std::string &fen);
     Color getMovingSide() const;
@@ -19,6 +19,12 @@ public:
     U64 getOccupancy(Color c) const;
     Piece getPieceBoard(Square s) const;
     int getCastlingRights() const;
+
+    int getHalfMoveClock() const;
+    int getFullMoveNumber() const;
+
+    bool makeMove(const Move &move);
+    void undoMove(const Move &move);
 
 private:
     std::array<U64, NUM_PIECES> bitboards;
@@ -32,9 +38,14 @@ private:
 
     int halfmoveClock;
     int fullmoveNumber;
+
+    std::array<UndoInfo, MAX_PLYS> history;
+    int ply = 0;
     
     Piece charToPiece(char c);
     Square parseEnPassantSquare(char pos,int rank,Color tomove);
     void rebuildBitboards();
     static char pieceToChar(Piece p);
+
+    void updateOccupancies();
 };

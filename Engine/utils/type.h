@@ -8,6 +8,7 @@ constexpr int NUM_PIECES = 12;
 constexpr int NUM_COLORS = 3;
 constexpr int BOARD_SIZE = 64;
 constexpr int RANK_SIZE = 8;
+constexpr int MAX_PLYS = 128;
 
 enum Color { WHITE, BLACK, BOTH };
 
