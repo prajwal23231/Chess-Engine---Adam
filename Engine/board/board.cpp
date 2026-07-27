@@ -1,6 +1,8 @@
 #include "board.h"
 #include <iostream>
 #include <cassert>
+
+using namespace Bitboard;
 using namespace std;
 
 namespace {
@@ -258,10 +260,10 @@ bool Board::loadFEN(const string &fen){
 void Board::rebuildBitboards(){
     bitboards.fill(0);
 
-    for(size_t i=0 ; i<BOARD_SIZE ; i++){
+    for(int i=0 ; i<BOARD_SIZE ; i++){
         Piece p = board[i];
         if(p==EMPTY) continue;
-        bitboards[p] |= (1ULL<<i);
+        setBit(bitboards[p], static_cast<Square>(i));
     }
 }
 
@@ -300,12 +302,12 @@ char Board::pieceToChar(Piece p){
 }
 
 void Board::print() const{
-    for(size_t i=RANK_SIZE ; i>0 ; i--){
-        size_t start_file = (i-1)*RANK_SIZE;
+    for(int i=RANK_SIZE ; i>0 ; i--){
+        int start_file = (i-1)*RANK_SIZE;
 
         cout<<i<<"  ";
 
-        for(size_t j=0 ; j<RANK_SIZE ; j++){
+        for(int j=0 ; j<RANK_SIZE ; j++){
             char c = pieceToChar(board[start_file+j]);
             cout<<c<<" ";
         }
@@ -377,26 +379,24 @@ bool Board::makeMove(const Move &move){
     assert(board[from]==moved);
     if(!move.isEnPassant()) assert(board[to]==captured);
 
-    U64 fromMask = (1ULL<<from);
-    U64 toMask = (1ULL<<to);
 
     // removing the moved piece from source
-    occupancies[sideToMove] &= ~fromMask;
-    occupancies[BOTH] &= ~fromMask;
+    clearBit(occupancies[sideToMove], from);
+    setBit(occupancies[BOTH], from);
     board[from] = EMPTY;
-    bitboards[moved] &= ~fromMask;
+    clearBit(bitboards[moved], from);
 
     // placing moved piece to dest
-    occupancies[BOTH] |= toMask;
-    occupancies[sideToMove] |= toMask;
+    setBit(occupancies[BOTH], to);
+    setBit(occupancies[sideToMove], to);
 
     if(move.isPromotion()){
-        bitboards[promotionPiece] |= toMask;
+        setBit(bitboards[promotionPiece], to);
         board[to] = promotionPiece;
     }
 
     else{
-        bitboards[moved] |= toMask;
+        setBit(bitboards[moved], to);
         board[to] = moved;
     }
 
@@ -406,15 +406,15 @@ bool Board::makeMove(const Move &move){
         int rankOffset = (sideToMove == WHITE ? -8 : 8);
         Square s = static_cast<Square>(to + rankOffset);
 
-        bitboards[captured] &= ~(1ULL<<s);
+        clearBit(bitboards[captured], s);
         board[s] = EMPTY;
-        occupancies[opp] &= ~(1ULL<<s);
-        occupancies[BOTH] &= ~(1ULL<<s);
+        clearBit(occupancies[opp], s);
+        clearBit(occupancies[BOTH], s);
     }
 
     else if(move.isCapture()){
-        bitboards[captured] &= ~toMask;
-        occupancies[opp] &= ~toMask;
+        clearBit(bitboards[captured], to);
+        clearBit(occupancies[opp], to);
     }
 
 
@@ -465,14 +465,14 @@ bool Board::makeMove(const Move &move){
         }
 
 
-        bitboards[p] &= ~(1ULL<<source);
-        bitboards[p] |= (1ULL<<dest);
+        clearBit(bitboards[p], source);
+        setBit(bitboards[p], dest);
         board[source] = EMPTY;
         board[dest] = p;
-        occupancies[sideToMove] &= ~(1ULL<<source);
-        occupancies[sideToMove] |= (1ULL<<dest);
-        occupancies[BOTH] &= ~(1ULL<<source);
-        occupancies[BOTH] |= (1ULL<<dest);
+        clearBit(occupancies[sideToMove], source);
+        setBit(occupancies[sideToMove], dest);
+        clearBit(occupancies[BOTH], source);
+        setBit(occupancies[BOTH], dest);
     }
 
 
@@ -562,25 +562,22 @@ void Board::undoMove(const Move &move){
 
     Color opp = (sideToMove == WHITE ? BLACK : WHITE);
 
-    U64 fromMask = (1ULL<<from);
-    U64 toMask = (1ULL<<to);
-
 
     // bringing piece back to from
-    bitboards[moved] |= fromMask;
+    setBit(bitboards[moved], from);
     board[from] = moved;
-    occupancies[opp] |= fromMask;
-    occupancies[BOTH] |= fromMask;
-    occupancies[opp] &= ~toMask;
-    occupancies[BOTH] &= ~toMask;
+    setBit(occupancies[opp], from);
+    setBit(occupancies[BOTH], from);
+    clearBit(occupancies[opp], to);
+    clearBit(occupancies[BOTH], to);
     board[to] = EMPTY;
 
     if(move.isPromotion()){
-        bitboards[promotionPiece] &= ~toMask;
+        clearBit(bitboards[promotionPiece], to);
     }
 
     else{
-        bitboards[moved] &= ~toMask;
+        clearBit(bitboards[moved], to);
     }
 
     
@@ -588,17 +585,17 @@ void Board::undoMove(const Move &move){
         int rankOffset = (sideToMove == WHITE ? 8 : -8);
         Square s = static_cast<Square>(to + rankOffset);
 
-        bitboards[captured] |= (1ULL<<s);
+        setBit(bitboards[captured], s);
         board[s] = captured;
-        occupancies[sideToMove] |= (1ULL<<s);
-        occupancies[BOTH] |= (1ULL<<s);
+        setBit(occupancies[sideToMove], s);
+        setBit(occupancies[BOTH], s);
     }
 
     else if(move.isCapture()){
-        bitboards[captured] |= toMask;
-        occupancies[sideToMove] |= toMask;
+        setBit(bitboards[captured], to);
+        setBit(occupancies[sideToMove], to);
         board[to] = captured;
-        occupancies[BOTH] |= toMask;
+        setBit(occupancies[BOTH], to);
     }
 
 
@@ -638,14 +635,14 @@ void Board::undoMove(const Move &move){
         }
 
 
-        bitboards[p] |= (1ULL<<source);
-        bitboards[p] &= ~(1ULL<<dest);
+        setBit(bitboards[p], source);
+        clearBit(bitboards[p], dest);
         board[source] = p;
         board[dest] = EMPTY;
-        occupancies[opp] |= (1ULL<<source);
-        occupancies[opp] &= ~(1ULL<<dest);
-        occupancies[BOTH] |= (1ULL<<source);
-        occupancies[BOTH] &= ~(1ULL<<dest);
+        setBit(occupancies[opp], source);
+        clearBit(occupancies[opp], dest);
+        setBit(occupancies[BOTH], source);
+        clearBit(occupancies[BOTH], dest);
     }
 
     

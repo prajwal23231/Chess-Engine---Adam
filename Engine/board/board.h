@@ -2,6 +2,7 @@
 #include "utils/type.h"
 #include "moves/undomove.h"
 #include "moves/move.h"
+#include "utils/bitboard_utilities.h"
 #include <array>
 #include <string>
 

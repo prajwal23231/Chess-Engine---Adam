@@ -1,4 +1,4 @@
-#include "moveGenerator.h"
+#include "movegen.h"
 #include <array>
 
 using namespace std;

@@ -1,5 +1,6 @@
 #pragma once
 #include "utils/type.h"
+#include "utils/bitboard_utilities.h"
 #include <array>
 
 class Attacks{

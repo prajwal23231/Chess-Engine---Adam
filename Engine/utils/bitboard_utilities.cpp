@@ -2,17 +2,17 @@
 #include <iostream>
 using namespace std;
 
-bool Bitboard::getBit(U64 bb,int square) {
+bool Bitboard::getBit(U64 bb,Square square) {
     U64 mask = (1ULL<<square);
     return bb&mask;
 }
 
-void Bitboard::setBit(U64 &bb,int square){
+void Bitboard::setBit(U64 &bb,Square square){
     U64 mask = (1ULL<<square);
     bb |= mask;
 }
 
-void Bitboard::clearBit(U64 &bb,int square){
+void Bitboard::clearBit(U64 &bb,Square square){
     U64 mask = ~(1ULL<<square);
     bb &= mask;
 }
@@ -38,7 +38,7 @@ void Bitboard::printBitboard(U64 bb){
         cout<<i<<"  ";
 
         for(int j=0; j<RANK_SIZE; j++){
-            int square = (i-1)*RANK_SIZE + j;
+            Square square = static_cast<Square>((i-1)*RANK_SIZE + j);
 
             cout<<getBit(bb,square)<<" ";
         }

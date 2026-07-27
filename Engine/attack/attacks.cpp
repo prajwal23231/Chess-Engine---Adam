@@ -1,5 +1,6 @@
 #include "attacks.h"
 using namespace std;
+using namespace Bitboard;
 
 namespace{
     constexpr int kingMove[8][2] = {{-1,0}, {1,0}, {-1,-1}, {1,1}, {1,-1}, {-1,1}, {0,-1}, {0,1}};
@@ -32,7 +33,7 @@ Attacks::Attacks(){
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
             Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
-            knightAttack[sq] |= (1ULL<<new_sq);
+            setBit(knightAttack[sq], new_sq);
         }
     }
 
@@ -51,7 +52,7 @@ Attacks::Attacks(){
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
             Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
-            kingAttack[sq] |= (1ULL<<new_sq);
+            setBit(kingAttack[sq], new_sq);
         }
     }
 
@@ -70,7 +71,7 @@ Attacks::Attacks(){
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
             Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
-            whitePawnAttack[sq] |= (1ULL<<new_sq);
+            setBit(whitePawnAttack[sq], new_sq);
         }
     }
 
@@ -90,7 +91,7 @@ Attacks::Attacks(){
             if(new_rank < 0 || new_rank >= RANK_SIZE || new_file < 0 || new_file >= RANK_SIZE) continue;
 
             Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
-            blackPawnAttack[sq] |= (1ULL<<new_sq);
+            setBit(blackPawnAttack[sq], new_sq);
         }
     }
 }

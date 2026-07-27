@@ -4,9 +4,9 @@
 namespace Bitboard{
 
     // Basic operations
-    bool getBit(U64 bb, int square);
-    void setBit(U64& bb, int square);
-    void clearBit(U64& bb, int square);
+    bool getBit(U64 bb, Square square);
+    void setBit(U64& bb, Square square);
+    void clearBit(U64& bb, Square square);
 
 
     // Bit manipulation helpers
