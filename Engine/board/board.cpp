@@ -6,12 +6,18 @@ using namespace Bitboard;
 using namespace std;
 
 namespace {
-constexpr char START_FEN[] =
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    constexpr char START_FEN[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    constexpr int getFile(int sq) { return sq % 8; }
+    constexpr int getRank(int sq) { return sq / 8; }
 }
 
 Board::Board(){
     clear();
+
+    initPawnAttacks();
+    initKingAttacks();
+    initKnightAttacks();
 }
 
 void Board::clear(){
@@ -648,4 +654,125 @@ void Board::undoMove(const Move &move){
     
     sideToMove = opp;
     if(sideToMove == BLACK) --fullmoveNumber;
+}
+
+
+void Board::initPawnAttacks(){
+    constexpr int whiteMove[2][2] = {{1,-1}, {1,1}};
+    constexpr int blackMove[2][2] = {{-1,-1}, {-1,1}};
+
+    for(int i=0; i<BOARD_SIZE; i++){
+        Square s = static_cast<Square>(i);
+        int cur_rank = getRank(i);
+        int cur_file = getFile(i);
+
+        // white
+        U64 wAttack = 0;
+        
+        for(int j=0;j<2;j++){
+            int new_rank = cur_rank + whiteMove[j][0];
+            int new_file = cur_file + whiteMove[j][1];
+
+            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
+                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
+                setBit(wAttack, source);
+            }
+        }
+
+        pawnAttacks[WHITE][s] = wAttack;
+
+
+        // black
+        U64 bAttack = 0;
+        
+        for(int j=0;j<2;j++){
+            int new_rank = cur_rank + blackMove[j][0];
+            int new_file = cur_file + blackMove[j][1];
+
+            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
+                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
+                setBit(bAttack, source);
+            }
+        }
+
+        pawnAttacks[BLACK][s] = bAttack;
+    }
+}
+
+
+void Board::initKingAttacks(){
+    constexpr int kingMoves[8][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+
+    for(int i=0; i<BOARD_SIZE; i++){
+        Square s = static_cast<Square>(i);
+        int cur_rank = getRank(i);
+        int cur_file = getFile(i);
+
+        U64 kAttack = 0;
+        
+        for(int j=0;j<8;j++){
+            int new_rank = cur_rank + kingMoves[j][0];
+            int new_file = cur_file + kingMoves[j][1];
+
+            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
+                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
+                setBit(kAttack, source);
+            }
+        }
+
+        kingAttacks[s] = kAttack;
+    }
+}
+
+
+void Board::initKnightAttacks(){
+    constexpr int knightMoves[8][2] = {{2,1}, {2,-1}, {1,2}, {-1,2}, {-2,1}, {-2,-1}, {1,-2}, {-1,-2}};
+
+    for(int i=0; i<BOARD_SIZE; i++){
+        Square s = static_cast<Square>(i);
+        int cur_rank = getRank(i);
+        int cur_file = getFile(i);
+
+        U64 nAttack = 0;
+        
+        for(int j=0;j<8;j++){
+            int new_rank = cur_rank + knightMoves[j][0];
+            int new_file = cur_file + knightMoves[j][1];
+
+            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
+                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
+                setBit(nAttack, source);
+            }
+        }
+
+        knightAttacks[s] = nAttack;
+    }
+}
+
+
+bool Board::isSquareAttacked(Square square, Color bySide) const{
+    // white pawn attack
+    if(bySide == WHITE){
+        U64 attack = pawnAttacks[BLACK][square];
+        if(attack & bitboards[WP]) return true;
+    }
+
+    else{
+        U64 attack = pawnAttacks[WHITE][square];
+        if(attack & bitboards[BP]) return true;
+    }
+
+    
+    // king attack
+    U64 kAttack = kingAttacks[square];
+    if(kAttack & bitboards[(bySide == WHITE ? WK : BK)]) return true;
+
+
+    // knight attack
+    U64 nAttack = knightAttacks[square];
+    if(nAttack & bitboards[(bySide == WHITE ? WN : BN)]) return true;
+
+
+    // bishop attack
+    U64 bAttack = magic
 }

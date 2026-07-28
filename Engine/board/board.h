@@ -2,6 +2,7 @@
 #include "utils/type.h"
 #include "moves/undomove.h"
 #include "moves/move.h"
+#include "moves/movegen.h"
 #include "utils/bitboard_utilities.h"
 #include <array>
 #include <string>
@@ -27,6 +28,8 @@ public:
     bool makeMove(const Move &move);
     void undoMove(const Move &move);
 
+    bool isSquareAttacked(Square square, Color bySide) const;
+
 private:
     std::array<U64, NUM_PIECES> bitboards;
     std::array<Piece, BOARD_SIZE> board;
@@ -49,4 +52,14 @@ private:
     static char pieceToChar(Piece p);
 
     void updateOccupancies();
+
+
+    // square attack lookup
+    U64 pawnAttacks[2][BOARD_SIZE];
+    U64 knightAttacks[BOARD_SIZE];
+    U64 kingAttacks[BOARD_SIZE];
+
+    void initPawnAttacks();
+    void initKnightAttacks();
+    void initKingAttacks();
 };
