@@ -23,9 +23,6 @@ public:
     U64 getBishopAttack(Square square, U64 occuppancy) const;
     U64 getRookAttack(Square square, U64 occuppancy) const;
 
-    U64 getBishopMask(Square s) const;
-    U64 getRookMask(Square s) const;
-
 private:
     std::array<MagicEntry, BOARD_SIZE> bishopMagic;
     std::array<MagicEntry, BOARD_SIZE> rookMagic;
@@ -37,6 +34,9 @@ private:
     U64 bishopMask(Square square) const;
     U64 rookMask(Square square) const;
     U64 setOccupancy(int index, int relevantBits, U64 attackMask) const;
+
+    U64 getBishopMask(Square s) const;
+    U64 getRookMask(Square s) const;
 
     U64 getBishopAttackOTF(Square s, U64 occupancy) const;
     U64 getRookAttackOTF(Square s, U64 occupancy) const;
