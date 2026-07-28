@@ -83,7 +83,7 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
             Piece captured = board.getPieceBoard(dest);
 
             // enpassant check
-            int cur_rank = dest / RANK_SIZE;
+            int cur_rank = getRank(dest);
 
             MoveFlag flag = capture;
 
@@ -109,9 +109,9 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
 
 
         // single push
-        int cur_rank = s / RANK_SIZE ;
+        int cur_rank = getRank(s);
         int new_rank = cur_rank + rankOffset;
-        int cur_file = s % RANK_SIZE;
+        int cur_file = getFile(s);
 
         Square single_push = static_cast<Square>(new_rank*RANK_SIZE + cur_file);
 

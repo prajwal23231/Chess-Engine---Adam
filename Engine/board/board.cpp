@@ -7,9 +7,6 @@ using namespace std;
 
 namespace {
     constexpr char START_FEN[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-    constexpr int getFile(int sq) { return sq % 8; }
-    constexpr int getRank(int sq) { return sq / 8; }
 }
 
 Board::Board(){
@@ -254,6 +251,9 @@ bool Board::loadFEN(const string &fen){
     enPassant = s;
     halfmoveClock = halfmove;
     fullmoveNumber = fullmove;
+
+    zobristKey = Zobrist::generateHash(*this);
+
     rebuildBitboards();
     updateOccupancies();
 
@@ -409,7 +409,7 @@ bool Board::makeMove(const Move &move){
 
     // removing the captured piece
     if(move.isEnPassant()){
-        int rankOffset = (sideToMove == WHITE ? -8 : 8);
+        int rankOffset = (sideToMove == WHITE ? -RANK_SIZE : RANK_SIZE);
         Square s = static_cast<Square>(to + rankOffset);
 
         clearBit(bitboards[captured], s);
@@ -427,7 +427,7 @@ bool Board::makeMove(const Move &move){
 
     // checking for double pawn push
     if(flag == doublePawnPush){
-        int rankOffset = (sideToMove == WHITE ? -8 : 8);
+        int rankOffset = (sideToMove == WHITE ? -RANK_SIZE : RANK_SIZE);
         enPassant = static_cast<Square>(to + rankOffset);
     }
 
@@ -588,7 +588,7 @@ void Board::undoMove(const Move &move){
 
     
     if(move.isEnPassant()){
-        int rankOffset = (sideToMove == WHITE ? 8 : -8);
+        int rankOffset = (sideToMove == WHITE ? RANK_SIZE : -RANK_SIZE);
         Square s = static_cast<Square>(to + rankOffset);
 
         setBit(bitboards[captured], s);

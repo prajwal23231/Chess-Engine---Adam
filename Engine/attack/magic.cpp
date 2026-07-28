@@ -7,9 +7,6 @@ using namespace Bitboard;
 namespace{
     constexpr int bishopMoves[4][2] = {{-1,-1}, {1,1}, {-1,1}, {1,-1}};
     constexpr int rookMoves[4][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}};
-
-    constexpr int getFile(int sq) { return sq % 8; }
-    constexpr int getRank(int sq) { return sq / 8; }
 };
 
 Magic::Magic(){

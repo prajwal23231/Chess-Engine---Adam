@@ -7,9 +7,6 @@ namespace{
     constexpr int knightMove[8][2] = {{2,1},{2,-1},{1,-2},{-1,-2},{1,2},{-1,2},{-2,1},{-2,-1}};
     constexpr int whitePawnMove[2][2] = {{1,-1}, {1,1}};
     constexpr int blackPawnMove[2][2] = {{-1,-1}, {-1,1}};
-
-    constexpr int getFile(int sq) { return sq % 8; }
-    constexpr int getRank(int sq) { return sq / 8; }
 }
 
 Attacks::Attacks(){

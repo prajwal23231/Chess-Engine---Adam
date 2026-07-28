@@ -5,6 +5,7 @@
 #include "moves/movegen.h"
 #include "utils/bitboard_utilities.h"
 #include "attack/magic_instance.h"
+#include "utils/zobrist.h"
 #include <array>
 #include <string>
 
@@ -46,6 +47,8 @@ private:
 
     std::array<UndoInfo, MAX_PLYS> history;
     int ply = 0;
+
+    U64 zobristKey;
     
     Piece charToPiece(char c);
     Square parseEnPassantSquare(char pos,int rank,Color tomove);
