@@ -1,4 +1,6 @@
 #include "magic.h"
+#include "utils/magic_numbers.h"
+#include <cassert>
 using namespace std;
 using namespace Bitboard;
 
@@ -28,6 +30,9 @@ Magic::Magic(){
 
         bishopMagic[s].shift = 64 - relBits1;
         rookMagic[s].shift = 64 - relBits2;
+
+        bishopMagic[s].magic = bishopMagicNum[s];
+        rookMagic[s].magic = rookMagicNum[s];
     }
 
 
@@ -36,6 +41,8 @@ Magic::Magic(){
 
     buildBishopTable();
     buildRookTable();
+
+    validate();
 }
 
 
@@ -152,15 +159,20 @@ void Magic::buildBishopTable(){
     for(int x=0; x<BOARD_SIZE; x++){
         Square square = static_cast<Square>(x);
         int relevantBits = 64 - bishopMagic[square].shift;
-        int maxInd = 1ULL<<relevantBits;
+        size_t tableSize = 1ULL<<relevantBits;
 
         bishopMagic[square].attacks = &bishopTable[offset];
 
-        for(int index=0; index<maxInd; index++){
+        for(size_t index=0; index<tableSize; index++){
             U64 occ = setOccupancy(index, relevantBits, bishopMagic[square].mask);
-            bishopTable[offset] = getBishopAttackOTF(square, occ);
-            ++offset;
+            size_t hash = (occ * bishopMagic[square].magic) >> bishopMagic[square].shift;
+
+            assert(hash < tableSize);
+            
+            bishopMagic[square].attacks[hash] = getBishopAttackOTF(square, occ);
         }
+
+        offset += tableSize;
     }
 }
 
@@ -171,15 +183,20 @@ void Magic::buildRookTable(){
     for(int x=0; x<BOARD_SIZE; x++){
         Square square = static_cast<Square>(x);
         int relevantBits = 64 - rookMagic[square].shift;
-        int maxInd = 1ULL<<relevantBits;
+        size_t tableSize = 1ULL<<relevantBits;
 
         rookMagic[square].attacks = &rookTable[offset];
 
-        for(int index=0; index<maxInd; index++){
+        for(size_t index=0; index<tableSize; index++){
             U64 occ = setOccupancy(index, relevantBits, rookMagic[square].mask);
-            rookTable[offset] = getRookAttackOTF(square, occ);
-            ++offset;
+            size_t hash = (occ * rookMagic[square].magic) >> rookMagic[square].shift;
+
+            assert(hash < tableSize);
+            
+            rookMagic[square].attacks[hash] = getRookAttackOTF(square, occ);
         }
+
+        offset += tableSize;
     }
 }
 
@@ -207,4 +224,40 @@ U64 Magic::getBishopMask(Square s) const{
 
 U64 Magic::getRookMask(Square s) const{
     return rookMagic[s].mask;
+}
+
+
+void Magic::validate() const{
+    for (int sq = 0; sq < 64; sq++) {
+        Square s = static_cast<Square>(sq);
+
+        int bits = popCount(getBishopMask(s));
+        int count = 1 << bits;
+
+        for (int i = 0; i < count; i++) {
+            U64 occ = setOccupancy(i, bits, getBishopMask(s));
+
+            assert(
+                getBishopAttack(s, occ) ==
+                getBishopAttackOTF(s, occ)
+            );
+        }
+    }
+
+
+    for (int sq = 0; sq < 64; sq++) {
+        Square s = static_cast<Square>(sq);
+
+        int bits = popCount(getRookMask(s));
+        int count = 1 << bits;
+
+        for (int i = 0; i < count; i++) {
+            U64 occ = setOccupancy(i, bits, getRookMask(s));
+
+            assert(
+                getRookAttack(s, occ) ==
+                getRookAttackOTF(s, occ)
+            );
+        }
+    }
 }

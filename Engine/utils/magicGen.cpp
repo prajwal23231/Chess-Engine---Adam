@@ -28,7 +28,7 @@ void MagicGen::generateAll(const Magic& magic){
     out << "#pragma once\n";
     out << "#include \"type.h\"\n\n";
 
-    out << "constexpr U64 bishopMagics[BOARD_SIZE] = {\n";
+    out << "constexpr U64 bishopMagicNum[BOARD_SIZE] = {\n";
 
     for (int i = 0; i < BOARD_SIZE; i++)
     {
@@ -46,7 +46,7 @@ void MagicGen::generateAll(const Magic& magic){
 
     out << "};\n";
 
-    out << "constexpr U64 rookMagics[BOARD_SIZE] = {\n";
+    out << "constexpr U64 rookMagicNum[BOARD_SIZE] = {\n";
 
     for (int i = 0; i < BOARD_SIZE; i++)
     {

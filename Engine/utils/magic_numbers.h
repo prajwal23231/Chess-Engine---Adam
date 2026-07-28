@@ -1,7 +1,7 @@
 #pragma once
 #include "type.h"
 
-constexpr U64 bishopMagics[BOARD_SIZE] = {
+constexpr U64 bishopMagicNum[BOARD_SIZE] = {
     0x8054C40094010200ULL,
     0x4202100122008002ULL,
     0x12100182184C2001ULL,
@@ -67,7 +67,7 @@ constexpr U64 bishopMagics[BOARD_SIZE] = {
     0x454080E0C04ULL,
     0x840802004E1200ULL
 };
-constexpr U64 rookMagics[BOARD_SIZE] = {
+constexpr U64 rookMagicNum[BOARD_SIZE] = {
     0x600012400004000ULL,
     0x4080A4024215004ULL,
     0x4422001081000ULL,

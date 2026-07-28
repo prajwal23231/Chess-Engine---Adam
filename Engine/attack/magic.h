@@ -10,7 +10,7 @@ struct MagicEntry
     U64 mask;
     U64 magic;
     uint8_t shift;
-    const U64* attacks;
+    U64* attacks;
 };
 
 class MagicGen;
@@ -43,4 +43,6 @@ private:
 
     void buildBishopTable();
     void buildRookTable();
+
+    void validate() const;
 };
