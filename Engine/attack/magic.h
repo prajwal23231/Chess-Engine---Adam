@@ -13,10 +13,18 @@ struct MagicEntry
     const U64* attacks;
 };
 
+class MagicGen;
 
 class Magic{
 public:
+    friend class MagicGen;
     Magic();
+
+    U64 getBishopAttack(Square square, U64 occuppancy) const;
+    U64 getRookAttack(Square square, U64 occuppancy) const;
+
+    U64 getBishopMask(Square s) const;
+    U64 getRookMask(Square s) const;
 
 private:
     std::array<MagicEntry, BOARD_SIZE> bishopMagic;
@@ -28,7 +36,7 @@ private:
     // helper functions
     U64 bishopMask(Square square) const;
     U64 rookMask(Square square) const;
-    U64 setOccupancy(int index, int relevamtBits, U64 attackMask) const;
+    U64 setOccupancy(int index, int relevantBits, U64 attackMask) const;
 
     U64 getBishopAttackOTF(Square s, U64 occupancy) const;
     U64 getRookAttackOTF(Square s, U64 occupancy) const;

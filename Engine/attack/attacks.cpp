@@ -113,115 +113,120 @@ U64 Attacks::getBlackPawnAttack(Square square) const{
 }
 
 U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
-    U64 bishopAttack = 0;
+    // U64 bishopAttack = 0;
 
-    int cur_rank = getRank(square);
-    int cur_file = getFile(square);
-    int new_rank = cur_rank+1, new_file = cur_file+1;
+    // int cur_rank = getRank(square);
+    // int cur_file = getFile(square);
+    // int new_rank = cur_rank+1, new_file = cur_file+1;
 
-    while(new_rank < RANK_SIZE && new_file < RANK_SIZE){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank < RANK_SIZE && new_file < RANK_SIZE){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        bishopAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     bishopAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank++, new_file++;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank++, new_file++;
+    // }
 
-    new_rank = cur_rank+1, new_file = cur_file-1;
+    // new_rank = cur_rank+1, new_file = cur_file-1;
 
-    while(new_rank < RANK_SIZE && new_file >= 0){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank < RANK_SIZE && new_file >= 0){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        bishopAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     bishopAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank++, new_file--;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank++, new_file--;
+    // }
 
-    new_rank = cur_rank-1, new_file = cur_file-1;
+    // new_rank = cur_rank-1, new_file = cur_file-1;
 
-    while(new_rank >= 0 && new_file >= 0){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank >= 0 && new_file >= 0){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        bishopAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     bishopAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank--, new_file--;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank--, new_file--;
+    // }
 
-    new_rank = cur_rank-1, new_file = cur_file+1;
+    // new_rank = cur_rank-1, new_file = cur_file+1;
 
-    while(new_rank >= 0 && new_file < RANK_SIZE){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank >= 0 && new_file < RANK_SIZE){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        bishopAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     bishopAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank--, new_file++;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank--, new_file++;
+    // }
 
-    return bishopAttack;
+    // return bishopAttack;
+
+    return magicBb.getBishopAttack(square, occupancy);
 }
 
 U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
-    U64 RookAttack = 0;
+    // U64 RookAttack = 0;
 
-    int cur_rank = getRank(square);
-    int cur_file = getFile(square);
-    int new_rank = cur_rank+1, new_file = cur_file;
+    // int cur_rank = getRank(square);
+    // int cur_file = getFile(square);
+    // int new_rank = cur_rank+1, new_file = cur_file;
 
-    while(new_rank < RANK_SIZE){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank < RANK_SIZE){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        RookAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     RookAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank++;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank++;
+    // }
 
-    new_rank = cur_rank, new_file = cur_file+1;
+    // new_rank = cur_rank, new_file = cur_file+1;
 
-    while(new_file < RANK_SIZE){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_file < RANK_SIZE){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        RookAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     RookAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_file++;
-    }
+    //     if(occupancy & mask) break;
+    //     new_file++;
+    // }
 
-    new_rank = cur_rank-1, new_file = cur_file;
+    // new_rank = cur_rank-1, new_file = cur_file;
 
-    while(new_rank >= 0){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_rank >= 0){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        RookAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     RookAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_rank--;
-    }
+    //     if(occupancy & mask) break;
+    //     new_rank--;
+    // }
 
-    new_rank = cur_rank, new_file = cur_file-1;
+    // new_rank = cur_rank, new_file = cur_file-1;
 
-    while(new_file >= 0){
-        Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
+    // while(new_file >= 0){
+    //     Square new_sq = static_cast<Square>(new_rank * RANK_SIZE + new_file);
 
-        U64 mask = (1ULL<<new_sq);
-        RookAttack |= mask;
+    //     U64 mask = (1ULL<<new_sq);
+    //     RookAttack |= mask;
 
-        if(occupancy & mask) break;
-        new_file--;
-    }
+    //     if(occupancy & mask) break;
+    //     new_file--;
+    // }
 
-    return RookAttack;
+    // return RookAttack;
+
+
+    return magicBb.getRookAttack(square, occupancy);
 }
 
 U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
