@@ -751,28 +751,45 @@ void Board::initKnightAttacks(){
 
 
 bool Board::isSquareAttacked(Square square, Color bySide) const{
+
+    Piece pawn   = (bySide == WHITE ? WP : BP);
+    Piece knight = (bySide == WHITE ? WN : BN);
+    Piece bishop = (bySide == WHITE ? WB : BB);
+    Piece rook   = (bySide == WHITE ? WR : BR);
+    Piece queen  = (bySide == WHITE ? WQ : BQ);
+    Piece king   = (bySide == WHITE ? WK : BK);
+    Color opp = (bySide == WHITE ? BLACK : WHITE);
+
+
+
     // white pawn attack
-    if(bySide == WHITE){
-        U64 attack = pawnAttacks[BLACK][square];
-        if(attack & bitboards[WP]) return true;
-    }
-
-    else{
-        U64 attack = pawnAttacks[WHITE][square];
-        if(attack & bitboards[BP]) return true;
-    }
-
+    U64 pawnAttack = pawnAttacks[opp][square];
+    if(pawnAttack & bitboards[pawn]) return true;
     
+
     // king attack
-    U64 kAttack = kingAttacks[square];
-    if(kAttack & bitboards[(bySide == WHITE ? WK : BK)]) return true;
+    U64 kingAttack = kingAttacks[square];
+    if(kingAttack & bitboards[king]) return true;
 
 
     // knight attack
-    U64 nAttack = knightAttacks[square];
-    if(nAttack & bitboards[(bySide == WHITE ? WN : BN)]) return true;
+    U64 knightAttack = knightAttacks[square];
+    if(knightAttack & bitboards[knight]) return true;
 
 
     // bishop attack
-    U64 bAttack ;
+    U64 bishopAttack = g_magic.getBishopAttack(square, occupancies[BOTH]);
+    if(bishopAttack & bitboards[bishop]) return true;
+
+
+    // rook attack
+    U64 rookAttack = g_magic.getRookAttack(square, occupancies[BOTH]);
+    if(rookAttack & bitboards[rook]) return true;
+
+
+    // queen attack
+    if((bishopAttack | rookAttack) & bitboards[queen]) return true;
+
+
+    return false;
 }
