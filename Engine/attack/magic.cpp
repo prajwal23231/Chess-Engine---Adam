@@ -54,7 +54,7 @@ U64 Magic::bishopMask(Square square) const{
     for (int i=0; i<4; i++){
         int new_rank = cur_rank + bishopMoves[i][0], new_file = cur_file + bishopMoves[i][1];
 
-        while(max(new_rank , new_file) < RANK_SIZE-1 && min(new_rank, new_file) > 0){
+        while(new_rank > 0 && new_rank < RANK_SIZE-1 && new_file > 0 && new_file < RANK_SIZE-1){
             Square pos = static_cast<Square>(new_rank * RANK_SIZE + new_file);
             setBit(mask,pos);
 
@@ -73,14 +73,22 @@ U64 Magic::rookMask(Square square) const{
     int cur_file = getFile(square);
 
     for (int i=0; i<4; i++){
-        int new_rank = cur_rank + rookMoves[i][0], new_file = cur_file + rookMoves[i][1];
+        int dr = rookMoves[i][0];
+        int df = rookMoves[i][1];
+        int new_rank = cur_rank + dr;
+        int new_file = cur_file + df;
 
-        while(max(new_rank , new_file) < RANK_SIZE-1 && min(new_rank, new_file) > 0){
+        while(true){
+            if (dr == 1 && new_rank >= RANK_SIZE-1) break;
+            if (dr == -1 && new_rank <= 0) break;
+            if (df == 1 && new_file >= RANK_SIZE-1) break;
+            if (df == -1 && new_file <= 0) break;
+
             Square pos = static_cast<Square>(new_rank * RANK_SIZE + new_file);
             setBit(mask,pos);
 
-            new_rank += rookMoves[i][0];
-            new_file += rookMoves[i][1];
+            new_rank += dr;
+            new_file += df;
         }
     }
 

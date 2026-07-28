@@ -1,30 +1,39 @@
 # Engine — Architecture & Logic Reference
 
-This document covers the internal architecture, data structures, algorithms, and design decisions behind Adam's engine code.
+This document covers the internal architecture, data structures, algorithms, and design decisions behind Adam's C++20 engine code.
 
 ## Scope
 
 This README is specifically for the Engine module of Adam.
 
-- Project-level overview (Frontend, Backend, Engine): `../README.md`
+- Project-level overview (Frontend, Backend, Engine): [../README.md](file:///c:/Users/sriva/OneDrive/Desktop/Adam/README.md)
 - Engine language standard: C++20
+
+---
 
 ## Quick Build and Run
 
 From the Adam root directory:
 
 ```bash
-g++ -std=c++20 -O2 -I Engine Engine/main.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/moves/move.cpp Engine/moves/moveGenerator.cpp Engine/uci/uci.cpp Engine/utils/bitboard_utilities.cpp -o adam
+g++ -std=c++20 -O2 -I Engine Engine/main.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/uci/uci.cpp Engine/utils/bitboard_utilities.cpp -o adam
 ./adam
 ```
 
-## Quick Test Build
-
-Examples:
+## Quick Test Builds
 
 ```bash
-g++ -std=c++20 -O2 -I Engine Engine/test/test_attacks.cpp Engine/attack/attacks.cpp Engine/utils/bitboard_utilities.cpp -o test_attacks
+# Magic Bitboard Test Suite
+g++ -std=c++20 -O2 -I Engine Engine/test/test_magic.cpp Engine/attack/magic.cpp Engine/utils/bitboard_utilities.cpp -o test_magic
+./test_magic
+
+# Attack Table Test Suite
+g++ -std=c++20 -O2 -I Engine Engine/test/test_attacks.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/utils/bitboard_utilities.cpp -o test_attacks
 ./test_attacks
+
+# Move Encoding Test Suite
+g++ -std=c++20 -O2 -I Engine Engine/test/moveTester.cpp Engine/moves/move.cpp Engine/utils/bitboard_utilities.cpp -o test_move
+./test_move
 ```
 
 ---
@@ -34,10 +43,10 @@ g++ -std=c++20 -O2 -I Engine Engine/test/test_attacks.cpp Engine/attack/attacks.
 - [Directory Layout](#directory-layout)
 - [Utils — Type Definitions & Bitboard Utilities](#utils--type-definitions--bitboard-utilities)
 - [Board — State Representation & FEN Parsing](#board--state-representation--fen-parsing)
-- [Attack — Attack Table Generation](#attack--attack-table-generation)
-- [Moves — Move Encoding & Generation](#moves--move-encoding--generation)
+- [Attack — Attack Table Generation & Magic Bitboards](#attack--attack-table-generation--magic-bitboards)
+- [Moves — Move Encoding & Pseudo-Legal Generator](#moves--move-encoding--pseudo-legal-generator)
 - [UCI — Protocol Handler](#uci--protocol-handler)
-- [Test — Test Suites](#test--test-suites)
+- [Test — Test Suites & Validation](#test--test-suites--validation)
 
 ---
 
@@ -45,29 +54,36 @@ g++ -std=c++20 -O2 -I Engine Engine/test/test_attacks.cpp Engine/attack/attacks.
 
 ```
 Engine/
-├── main.cpp
+├── main.cpp                      # CLI & main loop entry point
 ├── utils/
 │   ├── type.h                    # Core type aliases, enums, constants
 │   ├── bitboard_utilities.h      # Bitboard operation declarations
-│   └── bitboard_utilities.cpp    # Bitboard operation implementations
+│   ├── bitboard_utilities.cpp    # Bitboard operation implementations
+│   ├── magic_numbers.h           # Precalculated 64-bit magic numbers
+│   ├── magicGen.h / .cpp         # Magic candidate search algorithm
+│   └── magicCreate.cpp           # Generator tool entry point
 ├── board/
 │   ├── board.h                   # Board class declaration
 │   └── board.cpp                 # Board state management & FEN parser
 ├── attack/
 │   ├── attacks.h                 # Attacks class declaration
-│   └── attacks.cpp               # Attack table init & sliding piece logic
+│   ├── attacks.cpp               # Attack table init & sliding piece delegation
+│   ├── magic.h                   # Magic bitboard class declaration
+│   └── magic.cpp                 # Magic table precomputation & attack lookups
 ├── moves/
 │   ├── move.h                    # Move class & encoding constants
 │   ├── move.cpp                  # Move encoding/decoding implementation
-│   ├── moveGenerator.h           # MoveGenerator class declaration
-│   └── moveGenerator.cpp         # Pseudo-legal move generation for all pieces
+│   ├── movegen.h                 # MoveGenerator class declaration
+│   ├── movegen.cpp               # Pseudo-legal move generation logic
+│   └── undomove.h                # Move undo structure helper
 ├── uci/
 │   ├── uci.h                     # UCI class declaration
-│   └── uci.cpp                   # UCI command loop & parsing
+│   └── uci.cpp                   # UCI command loop & parser
 └── test/
-    ├── test_attacks.cpp           # Attack generation test suite
-    ├── moveTester.cpp             # Move encoding round-trip tests
-    └── moveGeneratorTester.cpp    # Move generator correctness tests
+    ├── test_attacks.cpp          # Attack generation test suite
+    ├── test_magic.cpp            # Magic bitboard test suite
+    ├── moveTester.cpp            # Move encoding round-trip tests
+    └── movegen.cpp               # Move generator test suite
 ```
 
 ---
@@ -147,82 +163,41 @@ The engine maintains **dual representation** — both a bitboard array (for fast
 
 Parses all six FEN fields with strict validation. On any validation failure, the board state is **not modified** (atomic update pattern using a temp board).
 
-**Parsing order:**
-
-1. **Piece placement** — Walks the FEN rank-by-rank (8th rank first in FEN, mapped to rank 8 internally). Validates rank length, character validity, and total square count.
-2. **Side to move** — `'w'` → `WHITE`, `'b'` → `BLACK`.
-3. **Castling rights** — Parses `KQkq` characters into a bitmask. Handles `-` for no castling. Detects duplicates.
-4. **En passant square** — Parses file letter + rank digit. Validates that en passant squares are only on rank 3 (for Black's move) or rank 6 (for White's move).
-5. **Halfmove clock** — Parses multi-digit integer.
-6. **Fullmove number** — Parses multi-digit integer, must be ≥ 1.
-
-After all fields validate, the board state is committed and `rebuildBitboards()` + `updateOccupancies()` are called.
-
-### Key Methods
-
-| Method | Description |
-|---|---|
-| `clear()` | Zeroes all state, sets defaults (White to move, move 1) |
-| `setStartingPosition()` | Loads the standard starting FEN |
-| `rebuildBitboards()` | Reconstructs all 12 bitboards from the mailbox array |
-| `updateOccupancies()` | ORs piece bitboards into WHITE/BLACK/BOTH occupancies |
-| `print()` | Outputs an ASCII board with rank/file labels |
-| `loadFEN(fen)` | Full FEN parser with validation, returns `bool` |
-
-### Accessor Methods
-
-| Method | Returns |
-|---|---|
-| `getMovingSide()` | Current `Color` to move |
-| `getEnPassant()` | En passant target `Square` |
-| `getBitboard(Piece)` | `U64` bitboard for a specific piece type |
-| `getOccupancy(Color)` | `U64` occupancy for WHITE, BLACK, or BOTH |
-| `getPieceBoard(Square)` | `Piece` on a given square (mailbox lookup) |
-| `getCastlingRights()` | Castling bitmask `int` |
-
 ---
 
-## Attack — Attack Table Generation
+## Attack — Attack Table Generation & Magic Bitboards
 
 ### Non-Sliding Pieces (Precomputed at Construction)
 
-The `Attacks` constructor precomputes attack tables for all 64 squares for each non-sliding piece type. The approach is direction-offset iteration with bounds checking:
+The `Attacks` constructor precomputes attack tables for all 64 squares for non-sliding piece types:
 
-**Knight:**
-- 8 possible L-shaped offsets: `{±2, ±1}` and `{±1, ±2}` in (rank, file)
-- Stored in `knightAttack[64]`
-- Corner squares yield 2 attacks, edge squares 3–4, center squares 8
+- **Knight**: 8 L-shaped offsets `{±2, ±1}` and `{±1, ±2}` stored in `knightAttack[64]`.
+- **King**: 8 directional offsets stored in `kingAttack[64]`.
+- **Pawns**: Diagonal capture masks stored in `whitePawnAttack[64]` and `blackPawnAttack[64]`.
 
-**King:**
-- 8 directional offsets: all combinations of `{-1, 0, +1}` in (rank, file) excluding `(0,0)`
-- Stored in `kingAttack[64]`
-- Corner squares yield 3 attacks, edges 5, center 8
+### Sliding Pieces — Magic Bitboards (`magic.h / magic.cpp`)
 
-**Pawns:**
-- White: `{+1, -1}` and `{+1, +1}` (diagonal captures forward)
-- Black: `{-1, -1}` and `{-1, +1}` (diagonal captures forward from Black's perspective)
-- Stored in `whitePawnAttack[64]` and `blackPawnAttack[64]`
-- Only capture squares, not push squares (pushes handled in move generator)
-- Edge files produce 1 attack instead of 2
+Sliding piece attacks (Bishops and Rooks) use **Magic Bitboards** for $O(1)$ constant time lookup:
 
-### Sliding Pieces (Computed On-the-Fly)
+#### 1. Mask Calculation (`bishopMask`, `rookMask`)
+- **Bishop Mask**: Truncates diagonal rays at rank/file edges (`0` and `7`) because board border pieces cannot block further sliding moves beyond the board.
+- **Rook Mask**: Truncates orthogonal rays at rank/file edges along ray direction.
 
-Sliding piece attacks are calculated at runtime, taking an occupancy bitboard as input to determine blocker positions:
+#### 2. Perfect Magic Hashing
+For a square $s$ and occupancy $\text{occ}$:
+$$\text{masked\_occ} = \text{occ} \ \& \ \text{mask}[s]$$
+$$\text{hash} = \frac{\text{masked\_occ} \times \text{magic}[s]}{2^{64 - \text{shift}[s]}}$$
+$$\text{attack} = \text{attacks}[s][\text{hash}]$$
 
-**Bishop — `getBishopAttack(square, occupancy)`:**
-- Rays along all 4 diagonals: NE `(+1,+1)`, NW `(+1,-1)`, SE `(-1,+1)`, SW `(-1,-1)`
-- Each ray walks outward, setting attack bits, stopping **on** the first occupied square (includes that square — it's either a capturable enemy or a friendly blocker filtered later)
+#### 3. Validation (`validate()`)
+Upon constructor execution, the `Magic` class validates every entry of all 64 squares against reference On-The-Fly raycasters to guarantee 100% collision-free lookup correctness.
 
-**Rook — `getRookAttack(square, occupancy)`:**
-- Rays along all 4 orthogonals: North `(+1,0)`, South `(-1,0)`, East `(0,+1)`, West `(0,-1)`
-- Same walk-and-block logic as bishop
-
-**Queen — `getQueenAttack(square, occupancy)`:**
-- Simply `getBishopAttack() | getRookAttack()` — combines diagonal and orthogonal rays
+#### 4. Queen Attacks
+`getQueenAttack(square, occupancy)` simply returns `getBishopAttack(square, occupancy) | getRookAttack(square, occupancy)`.
 
 ---
 
-## Moves — Move Encoding & Generation
+## Moves — Move Encoding & Pseudo-Legal Generator
 
 ### Move Encoding (`move.h / move.cpp`)
 
@@ -237,147 +212,34 @@ Bit Layout:
 └────────────┴────────────┴──────────────┴──────────┴─────────────┴───────────────┴──────────┘
 ```
 
-- **PIECE_OFFSET = 1** — All piece values are stored as `(piece + 1)` so that `EMPTY (-1)` maps to `0`, avoiding negative values in unsigned fields.
-- **SquareMask = 0x3F** (6 bits) — Masks from/to squares.
-- **pieceMask = 0xF** (4 bits) — Masks piece fields.
-- **flagMask = 0xF** (4 bits) — Masks the move flag.
+- **PIECE_OFFSET = 1** — `EMPTY (-1)` maps to `0` to avoid negative values in unsigned fields.
+- **Move Flags**: `quiet` (0), `capture` (1), `doublePawnPush` (2), `kingSideCastle` (3), `queenSideCastle` (4), `enPassant` (5), `promotion` (6), `promotion_capture` (7).
 
-**Move Flags (`MoveFlag` enum):**
+### Move Generator (`movegen.h / movegen.cpp`)
 
-| Flag | Value | Description |
-|---|---|---|
-| `quiet` | 0 | Normal non-capture move |
-| `capture` | 1 | Standard capture |
-| `doublePawnPush` | 2 | Pawn advances two squares from starting rank |
-| `kingSideCastle` | 3 | O-O |
-| `queenSideCastle` | 4 | O-O-O |
-| `enPassant` | 5 | En passant capture |
-| `promotion` | 6 | Pawn promotes (no capture) |
-| `promotion_capture` | 7 | Pawn promotes while capturing |
-
-**Query Helpers:**
-
-| Method | Logic |
-|---|---|
-| `isCapture()` | Flag is `capture`, `promotion_capture`, or `enPassant` |
-| `isPromotion()` | Flag is `promotion` or `promotion_capture` |
-| `isCastle()` | Flag is `kingSideCastle` or `queenSideCastle` |
-| `isEnPassant()` | Flag is `enPassant` |
-
-### Move Generator (`moveGenerator.h / moveGenerator.cpp`)
-
-The `MoveGenerator` takes a `const Board&` and `const Attacks&` reference and generates all **pseudo-legal moves** (legality filtering for check is not yet implemented).
-
-`generateMoves()` calls each piece-specific generator and collects results into a single `vector<Move>`.
-
-#### Piece-by-Piece Generation Logic:
-
-**Knight Moves:**
-1. Get the bitboard for the active side's knights.
-2. For each knight (via `popLSB` iteration), get its precomputed attack table.
-3. Mask out friendly pieces (`& ~movingSideOcc`).
-4. Each remaining set bit is a valid destination — check mailbox for capture vs quiet.
-
-**King Moves:**
-1. Same pattern as knight — get attack table, mask friendlies.
-2. **Castling** is handled separately:
-   - Checks `castlingRights` bitmask for availability.
-   - Verifies the path between king and rook is empty (mailbox lookup).
-   - King-side: F1/F8 and G1/G8 must be empty.
-   - Queen-side: B1/B8, C1/C8, and D1/D8 must be empty.
-   - **Note:** Does not yet check if squares are attacked (legal move filtering is planned).
-
-**Pawn Moves:**
-1. **Captures:** Get pawn attack table, mask out friendly pieces. For each attack target:
-   - If destination is the en passant square and target is empty → `enPassant` flag, captured piece set to enemy pawn.
-   - If destination is empty and not en passant → skip (pawns can't move diagonally without capturing).
-   - If on the final rank → generate 4 promotion-capture moves (Q, R, B, N).
-   - Otherwise → normal `capture`.
-2. **Single push:** Compute one square forward. If occupied → skip (and skip double push too).
-   - If on the final rank → generate 4 promotion moves.
-   - Otherwise → `quiet` move.
-3. **Double push:** Only from the starting rank (rank 2 for White, rank 7 for Black). Destination must also be empty. Flagged as `doublePawnPush`.
-
-**Bishop / Rook / Queen Moves:**
-1. Get piece bitboard, iterate each piece.
-2. Call the corresponding attack function with `BOTH` occupancy.
-3. Mask out friendly pieces.
-4. Each remaining bit → check mailbox for capture vs quiet.
-5. Queen simply uses `getQueenAttack()` which combines bishop + rook rays.
+Generates pseudo-legal moves for the side to move:
+- **Knight & King**: Iterates bitboard pieces, fetches attack table, filters out friendly occupied squares. Handles O-O and O-O-O castling availability.
+- **Pawns**: Generates single pushes, double pushes from starting rank, diagonal captures, en passant, and promotion choices (Queen, Rook, Bishop, Knight).
+- **Sliders**: Calls `getBishopAttack`, `getRookAttack`, or `getQueenAttack` with combined occupancy bitboards and filters out friendly pieces.
 
 ---
 
 ## UCI — Protocol Handler
 
-### `UCI` Class
-
-Implements a basic UCI communication loop:
-
-| Command | Handler | Behavior |
-|---|---|---|
-| `uci` | `handleUCI()` | Responds with `id name ADAM`, `id author Prajwal`, `uciok` |
-| `isready` | `handleIsReady()` | Responds with `readyok` |
-| `quit` | `handleQuit()` | Calls `exit(0)` |
-| `ucinewgame` | `newgame()` | Loads the standard starting position |
-| `position startpos` | `handlePosition()` | Sets board to starting position; `moves` token is parsed but move application is not yet implemented |
-| `position fen <fen>` | `handlePosition()` | Parses all 6 FEN tokens and calls `loadFEN()` |
-| (unknown) | — | Prints `"Unknon Command : <cmd>"` |
-
-**Not yet implemented:** `go`, `bestmove`, `stop`, `setoption`, move application from `position startpos moves ...`.
+Implemented in [uci.h](file:///c:/Users/sriva/OneDrive/Desktop/Adam/Engine/uci/uci.h) / [uci.cpp](file:///c:/Users/sriva/OneDrive/Desktop/Adam/Engine/uci/uci.cpp):
+- `uci` $\rightarrow$ `id name ADAM`, `id author Prajwal`, `uciok`
+- `isready` $\rightarrow$ `readyok`
+- `ucinewgame` $\rightarrow$ resets board state
+- `position fen <fen>` $\rightarrow$ parses FEN string and loads board
+- `quit` $\rightarrow$ exits application
 
 ---
 
-## Test — Test Suites
+## Test — Test Suites & Validation
 
-### `test_attacks.cpp` — Attack Generation Tests
+The `Engine/test/` directory contains unit test suites for verifying core engine subsystems:
 
-Uses a custom `TestStats` class and assertion helpers (`assertBitboardEqual`, `assertBitCount`, `assertSquareInBitboard`, `assertSquareNotInBitboard`).
-
-**Test suites:**
-
-| Suite | What It Validates |
-|---|---|
-| Knight Attacks | Center (8 attacks), corners (2 attacks), edges (4 attacks), symmetry across all 64 squares |
-| King Attacks | Center (8), corners (3), edges (5), symmetry verification |
-| Pawn Attacks | White/Black from center (2 each), edge files (1 each) |
-| Bishop Attacks | Empty board (13 from center, 7 from corner), single-direction blocking, all-direction blocking, long diagonal |
-| Rook Attacks | Empty board (14 from any square), single blocking, all-direction blocking, edge squares |
-| Queen Attacks | Decomposition property `queen == bishop | rook` verified for all 64 squares with empty and occupied boards |
-| Edge Cases | All four corners, every board edge, multiple blockers on same ray, adjacent blockers |
-| Consistency | No piece attacks its own square, sliding pieces don't attack themselves |
-
-### `moveTester.cpp` — Move Encoding Tests
-
-Tests round-trip encoding/decoding for all move fields:
-
-- All 12 piece types as moved piece and captured piece
-- All promotion piece options
-- All move flags
-- Full 64×64 from/to sweep (4096 combinations)
-- Bit field isolation (ensures fields don't bleed into each other)
-- Copy constructor and value equality
-- Game sequence simulation (Italian Game opening)
-
-### `moveGeneratorTester.cpp` — Move Generator Tests
-
-Tests actual move generation from specific FEN positions:
-
-| Test | Position | Validates |
-|---|---|---|
-| Starting position | Standard | 20 moves (16 pawn + 4 knight), 8 double pushes, 0 captures |
-| Isolated knight | Center knight + king | 8 knight moves, 5 king moves |
-| Corner knight | A1 knight | 2 moves (B3, C2) |
-| En passant (White) | Pawn on E5, EP square D6 | EP move generated with correct from/to/captured |
-| En passant (Black) | Pawn on D4, EP square E3 | Mirror case for Black |
-| Blocked double push | Pawn on E2, enemy on E4 | Single push yes, double push no |
-| Non-starting rank | Pawn on E3 | No double push generated |
-| Promotion matrix | Pawn on B7, enemies on A8/C8 | 4 quiet promotions + 8 capture-promotions |
-| Castling (both clear) | Rooks + King, KQ rights | Both castle moves present |
-| Castling (king-side blocked) | Bishop on F1 | Only queen-side castle |
-| Castling (no rights) | Same position, `-` rights | Zero castle moves |
-| Castling (queen-side blocked) | Knight on B1 | Only king-side castle |
-| Sliding piece blocking | Rook with own/enemy blockers | Can't pass own piece, can capture enemy, can't pass enemy |
-| Queen open board | Queen on D4 | Exactly 27 moves |
-| Kings only | Just two kings | 5 moves for the side to move |
-| Side to move | Black to move | Only BK moves generated |
-| Known-issue checks | Promotion-capture & EP | Validates `isCapture()`/`isPromotion()` for combined flags |
+1. **`test_magic.cpp`**: Comprehensive Magic Bitboard verification (mask bit counts, attack lookups, submask invariance, 64,000+ random occupancy comparisons vs OTF, symmetry, self-attack checks).
+2. **`test_attacks.cpp`**: Non-sliding and sliding piece attack table validation.
+3. **`moveTester.cpp`**: 32-bit move encoding round-trip bitfield integrity tests.
+4. **`movegen.cpp`**: Pseudo-legal move generator test runner.
