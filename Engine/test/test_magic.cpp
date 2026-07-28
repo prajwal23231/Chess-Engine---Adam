@@ -4,7 +4,7 @@
 #include <vector>
 #include <random>
 #include <string>
-#include "attack/magic.h"
+#include "attack/magic_instance.h"
 #include "utils/bitboard_utilities.h"
 #include "utils/type.h"
 
@@ -152,42 +152,42 @@ static U64 getRookAttackOTF(Square square, U64 occupancy) {
 // TEST SUITES
 // =====================================================
 
-void testMagicInitialization(const Magic& magic) {
+void testMagicInitialization() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 1: MAGIC INITIALIZATION & MASKS\n";
     cout << string(50, '=') << "\n\n";
 
     // Bishop mask relevant bit count check for key squares
     // Corners (A1, H1, A8, H8) -> 6 relevant bits
-    assertBitCount(magic.getBishopMask(A1), 6, "Bishop A1 mask relevant bits count == 6");
-    assertBitCount(magic.getBishopMask(H1), 6, "Bishop H1 mask relevant bits count == 6");
-    assertBitCount(magic.getBishopMask(A8), 6, "Bishop A8 mask relevant bits count == 6");
-    assertBitCount(magic.getBishopMask(H8), 6, "Bishop H8 mask relevant bits count == 6");
+    assertBitCount(g_magic.getBishopMask(A1), 6, "Bishop A1 mask relevant bits count == 6");
+    assertBitCount(g_magic.getBishopMask(H1), 6, "Bishop H1 mask relevant bits count == 6");
+    assertBitCount(g_magic.getBishopMask(A8), 6, "Bishop A8 mask relevant bits count == 6");
+    assertBitCount(g_magic.getBishopMask(H8), 6, "Bishop H8 mask relevant bits count == 6");
 
     // Center (E4, D4, E5, D5) -> 9 relevant bits
-    assertBitCount(magic.getBishopMask(E4), 9, "Bishop E4 mask relevant bits count == 9");
-    assertBitCount(magic.getBishopMask(D4), 9, "Bishop D4 mask relevant bits count == 9");
+    assertBitCount(g_magic.getBishopMask(E4), 9, "Bishop E4 mask relevant bits count == 9");
+    assertBitCount(g_magic.getBishopMask(D4), 9, "Bishop D4 mask relevant bits count == 9");
 
     // Edge (A4, H4, E1, E8) -> 5 relevant bits
-    assertBitCount(magic.getBishopMask(A4), 5, "Bishop A4 mask relevant bits count == 5");
-    assertBitCount(magic.getBishopMask(E1), 5, "Bishop E1 mask relevant bits count == 5");
+    assertBitCount(g_magic.getBishopMask(A4), 5, "Bishop A4 mask relevant bits count == 5");
+    assertBitCount(g_magic.getBishopMask(E1), 5, "Bishop E1 mask relevant bits count == 5");
 
     // Rook mask relevant bit count check for key squares
     // Corner (A1) -> 12 relevant bits
-    assertBitCount(magic.getRookMask(A1), 12, "Rook A1 mask relevant bits count == 12");
-    assertBitCount(magic.getRookMask(H8), 12, "Rook H8 mask relevant bits count == 12");
+    assertBitCount(g_magic.getRookMask(A1), 12, "Rook A1 mask relevant bits count == 12");
+    assertBitCount(g_magic.getRookMask(H8), 12, "Rook H8 mask relevant bits count == 12");
 
     // Center (E4) -> 10 relevant bits
-    assertBitCount(magic.getRookMask(E4), 10, "Rook E4 mask relevant bits count == 10");
+    assertBitCount(g_magic.getRookMask(E4), 10, "Rook E4 mask relevant bits count == 10");
 
     // Edge (A4) -> 11 relevant bits
-    assertBitCount(magic.getRookMask(A4), 11, "Rook A4 mask relevant bits count == 11");
+    assertBitCount(g_magic.getRookMask(A4), 11, "Rook A4 mask relevant bits count == 11");
 
     // Verify all 64 squares have non-zero masks
     bool all_masks_valid = true;
     for (int s = 0; s < 64; s++) {
         Square sq = static_cast<Square>(s);
-        if (magic.getBishopMask(sq) == 0ULL || magic.getRookMask(sq) == 0ULL) {
+        if (g_magic.getBishopMask(sq) == 0ULL || g_magic.getRookMask(sq) == 0ULL) {
             all_masks_valid = false;
             break;
         }
@@ -195,21 +195,21 @@ void testMagicInitialization(const Magic& magic) {
     assertTrue(all_masks_valid, "All 64 squares have valid non-zero Bishop and Rook masks");
 }
 
-void testBishopAttacks(const Magic& magic) {
+void testBishopAttacks() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 2: BISHOP MAGIC ATTACKS\n";
     cout << string(50, '=') << "\n\n";
 
     // 1. Empty Board Tests
-    U64 e4_bishop_empty = magic.getBishopAttack(E4, 0ULL);
+    U64 e4_bishop_empty = g_magic.getBishopAttack(E4, 0ULL);
     assertBitCount(e4_bishop_empty, 13, "Bishop E4 empty board attack count == 13");
 
-    U64 a1_bishop_empty = magic.getBishopAttack(A1, 0ULL);
+    U64 a1_bishop_empty = g_magic.getBishopAttack(A1, 0ULL);
     assertBitCount(a1_bishop_empty, 7, "Bishop A1 empty board attack count == 7");
 
     // 2. Single Blocker
     U64 occ_f5 = (1ULL << F5);
-    U64 e4_bishop_blocked = magic.getBishopAttack(E4, occ_f5);
+    U64 e4_bishop_blocked = g_magic.getBishopAttack(E4, occ_f5);
     assertSquareInBitboard(e4_bishop_blocked, F5, "Bishop E4 attacks blocker at F5");
     assertSquareNotInBitboard(e4_bishop_blocked, G6, "Bishop E4 blocked beyond F5 (G6 absent)");
     assertSquareNotInBitboard(e4_bishop_blocked, H7, "Bishop E4 blocked beyond F5 (H7 absent)");
@@ -217,26 +217,26 @@ void testBishopAttacks(const Magic& magic) {
 
     // 3. Multiple Blockers
     U64 occ_multi = (1ULL << F5) | (1ULL << D3);
-    U64 e4_multi = magic.getBishopAttack(E4, occ_multi);
+    U64 e4_multi = g_magic.getBishopAttack(E4, occ_multi);
     assertSquareInBitboard(e4_multi, F5, "Bishop E4 attacks NE blocker at F5");
     assertSquareNotInBitboard(e4_multi, G6, "Bishop E4 blocked beyond F5");
     assertSquareInBitboard(e4_multi, D3, "Bishop E4 attacks SW blocker at D3");
     assertSquareNotInBitboard(e4_multi, C2, "Bishop E4 blocked beyond D3");
 
     // 4. Fully Occupied Board
-    U64 e4_full = magic.getBishopAttack(E4, ~0ULL);
+    U64 e4_full = g_magic.getBishopAttack(E4, ~0ULL);
     assertBitCount(e4_full, 4, "Bishop E4 fully occupied board attack count == 4");
     assertSquareInBitboard(e4_full, F5, "Bishop E4 full board attacks adjacent F5");
     assertSquareInBitboard(e4_full, D5, "Bishop E4 full board attacks adjacent D5");
     assertSquareInBitboard(e4_full, D3, "Bishop E4 full board attacks adjacent D3");
     assertSquareInBitboard(e4_full, F3, "Bishop E4 full board attacks adjacent F3");
 
-    U64 a1_full = magic.getBishopAttack(A1, ~0ULL);
+    U64 a1_full = g_magic.getBishopAttack(A1, ~0ULL);
     assertBitCount(a1_full, 1, "Bishop A1 fully occupied board attack count == 1 (B2 only)");
     assertSquareInBitboard(a1_full, B2, "Bishop A1 full board attacks B2");
 }
 
-void testRookAttacks(const Magic& magic) {
+void testRookAttacks() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 3: ROOK MAGIC ATTACKS\n";
     cout << string(50, '=') << "\n\n";
@@ -245,7 +245,7 @@ void testRookAttacks(const Magic& magic) {
     bool all_empty_14 = true;
     for (int s = 0; s < 64; s++) {
         Square sq = static_cast<Square>(s);
-        if (popCount(magic.getRookAttack(sq, 0ULL)) != 14) {
+        if (popCount(g_magic.getRookAttack(sq, 0ULL)) != 14) {
             all_empty_14 = false;
             cout << "Rook on square " << s << " empty board count != 14\n";
             break;
@@ -255,7 +255,7 @@ void testRookAttacks(const Magic& magic) {
 
     // 2. Single Blocker
     U64 occ_e6 = (1ULL << E6);
-    U64 e4_rook_blocked = magic.getRookAttack(E4, occ_e6);
+    U64 e4_rook_blocked = g_magic.getRookAttack(E4, occ_e6);
     assertSquareInBitboard(e4_rook_blocked, E5, "Rook E4 attacks square E5 before blocker");
     assertSquareInBitboard(e4_rook_blocked, E6, "Rook E4 attacks blocker at E6");
     assertSquareNotInBitboard(e4_rook_blocked, E7, "Rook E4 blocked beyond E6 (E7 absent)");
@@ -263,7 +263,7 @@ void testRookAttacks(const Magic& magic) {
 
     // 3. Blockers on All 4 Rays
     U64 occ_4way = (1ULL << E6) | (1ULL << E2) | (1ULL << G4) | (1ULL << C4);
-    U64 e4_4way = magic.getRookAttack(E4, occ_4way);
+    U64 e4_4way = g_magic.getRookAttack(E4, occ_4way);
     assertSquareInBitboard(e4_4way, E6, "Rook E4 attacks N blocker E6");
     assertSquareNotInBitboard(e4_4way, E7, "Rook E4 blocked beyond E6");
     assertSquareInBitboard(e4_4way, E2, "Rook E4 attacks S blocker E2");
@@ -274,20 +274,20 @@ void testRookAttacks(const Magic& magic) {
     assertSquareNotInBitboard(e4_4way, B4, "Rook E4 blocked beyond C4");
 
     // 4. Fully Occupied Board
-    U64 e4_full = magic.getRookAttack(E4, ~0ULL);
+    U64 e4_full = g_magic.getRookAttack(E4, ~0ULL);
     assertBitCount(e4_full, 4, "Rook E4 fully occupied board attack count == 4");
     assertSquareInBitboard(e4_full, E5, "Rook E4 full board attacks E5");
     assertSquareInBitboard(e4_full, E3, "Rook E4 full board attacks E3");
     assertSquareInBitboard(e4_full, F4, "Rook E4 full board attacks F4");
     assertSquareInBitboard(e4_full, D4, "Rook E4 full board attacks D4");
 
-    U64 a1_full = magic.getRookAttack(A1, ~0ULL);
+    U64 a1_full = g_magic.getRookAttack(A1, ~0ULL);
     assertBitCount(a1_full, 2, "Rook A1 fully occupied board attack count == 2 (A2, B1)");
     assertSquareInBitboard(a1_full, A2, "Rook A1 full board attacks A2");
     assertSquareInBitboard(a1_full, B1, "Rook A1 full board attacks B1");
 }
 
-void testMaskInvariance(const Magic& magic) {
+void testMaskInvariance() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 4: MASK INVARIANCE & HASHING\n";
     cout << string(50, '=') << "\n\n";
@@ -299,8 +299,8 @@ void testMaskInvariance(const Magic& magic) {
 
     for (int s = 0; s < 64; s++) {
         Square sq = static_cast<Square>(s);
-        U64 bMask = magic.getBishopMask(sq);
-        U64 rMask = magic.getRookMask(sq);
+        U64 bMask = g_magic.getBishopMask(sq);
+        U64 rMask = g_magic.getRookMask(sq);
 
         for (int i = 0; i < 50; i++) {
             U64 random_occ = rng();
@@ -308,13 +308,13 @@ void testMaskInvariance(const Magic& magic) {
             U64 masked_r_occ = random_occ & rMask;
 
             // Attacks with raw random occupancy vs masked occupancy must be identical
-            if (magic.getBishopAttack(sq, random_occ) != magic.getBishopAttack(sq, masked_b_occ)) {
+            if (g_magic.getBishopAttack(sq, random_occ) != g_magic.getBishopAttack(sq, masked_b_occ)) {
                 bishop_invariant = false;
                 cout << "Bishop mask invariance failure at square " << s << "\n";
                 break;
             }
 
-            if (magic.getRookAttack(sq, random_occ) != magic.getRookAttack(sq, masked_r_occ)) {
+            if (g_magic.getRookAttack(sq, random_occ) != g_magic.getRookAttack(sq, masked_r_occ)) {
                 rook_invariant = false;
                 cout << "Rook mask invariance failure at square " << s << "\n";
                 break;
@@ -326,7 +326,7 @@ void testMaskInvariance(const Magic& magic) {
     assertTrue(rook_invariant, "Rook attack lookup is invariant to occupancy bits outside mask");
 }
 
-void testExhaustiveOTFComparison(const Magic& magic) {
+void testExhaustiveOTFComparison() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 5: EXHAUSTIVE COMPARISON vs REFERENCE OTF\n";
     cout << string(50, '=') << "\n\n";
@@ -341,24 +341,24 @@ void testExhaustiveOTFComparison(const Magic& magic) {
         Square sq = static_cast<Square>(s);
 
         // Always check edge occupancies: 0ULL and ~0ULL
-        if (magic.getBishopAttack(sq, 0ULL) != getBishopAttackOTF(sq, 0ULL) ||
-            magic.getBishopAttack(sq, ~0ULL) != getBishopAttackOTF(sq, ~0ULL)) {
+        if (g_magic.getBishopAttack(sq, 0ULL) != getBishopAttackOTF(sq, 0ULL) ||
+            g_magic.getBishopAttack(sq, ~0ULL) != getBishopAttackOTF(sq, ~0ULL)) {
             bishop_matches = false;
         }
 
-        if (magic.getRookAttack(sq, 0ULL) != getRookAttackOTF(sq, 0ULL) ||
-            magic.getRookAttack(sq, ~0ULL) != getRookAttackOTF(sq, ~0ULL)) {
+        if (g_magic.getRookAttack(sq, 0ULL) != getRookAttackOTF(sq, 0ULL) ||
+            g_magic.getRookAttack(sq, ~0ULL) != getRookAttackOTF(sq, ~0ULL)) {
             rook_matches = false;
         }
 
         for (int i = 0; i < NUM_SAMPLES; i++) {
             U64 occ = rng();
-            if (magic.getBishopAttack(sq, occ) != getBishopAttackOTF(sq, occ)) {
+            if (g_magic.getBishopAttack(sq, occ) != getBishopAttackOTF(sq, occ)) {
                 bishop_matches = false;
                 cout << "Bishop OTF mismatch on square " << s << "\n";
                 break;
             }
-            if (magic.getRookAttack(sq, occ) != getRookAttackOTF(sq, occ)) {
+            if (g_magic.getRookAttack(sq, occ) != getRookAttackOTF(sq, occ)) {
                 rook_matches = false;
                 cout << "Rook OTF mismatch on square " << s << "\n";
                 break;
@@ -366,11 +366,11 @@ void testExhaustiveOTFComparison(const Magic& magic) {
         }
     }
 
-    assertTrue(bishop_matches, "Bishop magic attack equals OTF reference for 64,000+ random occupancies");
-    assertTrue(rook_matches, "Rook magic attack equals OTF reference for 64,000+ random occupancies");
+    assertTrue(bishop_matches, "Bishop g_magic attack equals OTF reference for 64,000+ random occupancies");
+    assertTrue(rook_matches, "Rook g_magic attack equals OTF reference for 64,000+ random occupancies");
 }
 
-void testSelfAttackAndSymmetry(const Magic& magic) {
+void testSelfAttackAndSymmetry() {
     cout << "\n" << string(50, '=') << "\n";
     cout << "TEST SUITE 6: SELF-ATTACK & UNBLOCKED SYMMETRY\n";
     cout << string(50, '=') << "\n\n";
@@ -385,8 +385,8 @@ void testSelfAttackAndSymmetry(const Magic& magic) {
 
         for (int i = 0; i < 20; i++) {
             U64 occ = rng();
-            U64 bAttack = magic.getBishopAttack(sq, occ);
-            U64 rAttack = magic.getRookAttack(sq, occ);
+            U64 bAttack = g_magic.getBishopAttack(sq, occ);
+            U64 rAttack = g_magic.getRookAttack(sq, occ);
 
             if (getBit(bAttack, sq) || getBit(rAttack, sq)) {
                 no_self_attack = false;
@@ -397,19 +397,19 @@ void testSelfAttackAndSymmetry(const Magic& magic) {
 
         // Symmetry test on unblocked board:
         // If sq1 attacks sq2 on empty board, then sq2 must attack sq1 on empty board
-        U64 bEmpty = magic.getBishopAttack(sq, 0ULL);
-        U64 rEmpty = magic.getRookAttack(sq, 0ULL);
+        U64 bEmpty = g_magic.getBishopAttack(sq, 0ULL);
+        U64 rEmpty = g_magic.getRookAttack(sq, 0ULL);
 
         for (int s2 = 0; s2 < 64; s2++) {
             Square sq2 = static_cast<Square>(s2);
             if (getBit(bEmpty, sq2)) {
-                if (!getBit(magic.getBishopAttack(sq2, 0ULL), sq)) {
+                if (!getBit(g_magic.getBishopAttack(sq2, 0ULL), sq)) {
                     unblocked_symmetry = false;
                     cout << "Bishop symmetry failed between " << s << " and " << s2 << "\n";
                 }
             }
             if (getBit(rEmpty, sq2)) {
-                if (!getBit(magic.getRookAttack(sq2, 0ULL), sq)) {
+                if (!getBit(g_magic.getRookAttack(sq2, 0ULL), sq)) {
                     unblocked_symmetry = false;
                     cout << "Rook symmetry failed between " << s << " and " << s2 << "\n";
                 }
@@ -434,15 +434,14 @@ int main() {
     stats.reset();
 
     cout << "Instantiating Magic object (triggers internal table generation & validate())...\n";
-    Magic magic;
     cout << "Magic initialization complete.\n";
 
-    testMagicInitialization(magic);
-    testBishopAttacks(magic);
-    testRookAttacks(magic);
-    testMaskInvariance(magic);
-    testExhaustiveOTFComparison(magic);
-    testSelfAttackAndSymmetry(magic);
+    testMagicInitialization();
+    testBishopAttacks();
+    testRookAttacks();
+    testMaskInvariance();
+    testExhaustiveOTFComparison();
+    testSelfAttackAndSymmetry();
 
     stats.report();
 

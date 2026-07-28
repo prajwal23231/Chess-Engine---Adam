@@ -9,17 +9,17 @@
 using namespace std;
 using namespace Bitboard;
 
-void MagicGen::generateAll(const Magic& magic){
+void MagicGen::generateAll(){
     U64 bishopMagics[BOARD_SIZE];
     U64 rookMagics[BOARD_SIZE];
 
     for(int sq=0; sq<BOARD_SIZE; sq++){
         Square s = static_cast<Square>(sq);
 
-        bishopMagics[s] = MagicGen::findMagic(s, true, magic);
+        bishopMagics[s] = MagicGen::findMagic(s, true);
         cout<<"bishop done,"<<flush;
 
-        rookMagics[s] = MagicGen::findMagic(s, false, magic);
+        rookMagics[s] = MagicGen::findMagic(s, false);
         cout<<"rook done\n"<<flush;
     }
 
@@ -68,8 +68,8 @@ void MagicGen::generateAll(const Magic& magic){
 }
 
 
-U64 MagicGen::findMagic(Square square, bool bishop, const Magic &magic){
-    U64 mask = (bishop ? magic.getBishopMask(square) : magic.getRookMask(square));
+U64 MagicGen::findMagic(Square square, bool bishop){
+    U64 mask = (bishop ? g_magic.getBishopMask(square) : g_magic.getRookMask(square));
 
     int relevantBits = popCount(mask);
     int occupancyCount = 1 << relevantBits;
@@ -80,14 +80,14 @@ U64 MagicGen::findMagic(Square square, bool bishop, const Magic &magic){
     vector<bool> filled(occupancyCount);
 
     for(int index=0; index<occupancyCount; ++index){
-        occupancies[index] = magic.setOccupancy(index, relevantBits, mask);
+        occupancies[index] = g_magic.setOccupancy(index, relevantBits, mask);
 
         if(bishop){
-            attacks[index] = magic.getBishopAttackOTF(square, occupancies[index]);
+            attacks[index] = g_magic.getBishopAttackOTF(square, occupancies[index]);
         }
 
         else{
-            attacks[index] = magic.getRookAttackOTF(square, occupancies[index]);
+            attacks[index] = g_magic.getRookAttackOTF(square, occupancies[index]);
         }
     }
 

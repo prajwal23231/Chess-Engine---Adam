@@ -774,5 +774,5 @@ bool Board::isSquareAttacked(Square square, Color bySide) const{
 
 
     // bishop attack
-    U64 bAttack = magic
+    U64 bAttack ;
 }

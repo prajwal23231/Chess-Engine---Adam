@@ -4,6 +4,7 @@
 #include "moves/move.h"
 #include "moves/movegen.h"
 #include "utils/bitboard_utilities.h"
+#include "attack/magic_instance.h"
 #include <array>
 #include <string>
 

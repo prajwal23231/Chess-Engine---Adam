@@ -12,7 +12,7 @@ namespace{
     constexpr int getRank(int sq) { return sq / 8; }
 }
 
-Attacks::Attacks() : magicBb(){
+Attacks::Attacks(){
     knightAttack.fill(0);
     kingAttack.fill(0);
     blackPawnAttack.fill(0);
@@ -167,7 +167,7 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
 
     // return bishopAttack;
 
-    return magicBb.getBishopAttack(square, occupancy);
+    return g_magic.getBishopAttack(square, occupancy);
 }
 
 U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
@@ -226,7 +226,7 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
     // return RookAttack;
 
 
-    return magicBb.getRookAttack(square, occupancy);
+    return g_magic.getRookAttack(square, occupancy);
 }
 
 U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
