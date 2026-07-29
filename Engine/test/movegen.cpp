@@ -61,7 +61,7 @@ int main() {
         Move moves[MAX_MOVES];
         int moveCount = gen.generateMoves(moves);
 
-        CHECK(moveCount == 20, "starting position: expected 20 pseudo-legal moves, got " + to_string(moveCount));
+        CHECK(moveCount == 20, "starting position: expected 20 legal moves, got " + to_string(moveCount));
 
         int pawnMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WP; });
         int knightMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WN; });

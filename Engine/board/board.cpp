@@ -737,7 +737,9 @@ void Board::initKnightAttacks(){
 }
 
 
-bool Board::isSquareAttacked(Square square, Color bySide) const{
+bool Board::isSquareAttacked(Square square) const{
+
+    Color bySide = (sideToMove == WHITE ? BLACK : WHITE);
 
     Piece pawn   = (bySide == WHITE ? WP : BP);
     Piece knight = (bySide == WHITE ? WN : BN);

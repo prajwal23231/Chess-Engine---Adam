@@ -30,7 +30,7 @@ public:
     bool makeMove(const Move &move);
     void undoMove(const Move &move);
 
-    bool isSquareAttacked(Square square, Color bySide) const;
+    bool isSquareAttacked(Square square) const;
 
     U64 getZobristKey() const;
 

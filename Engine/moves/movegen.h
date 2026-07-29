@@ -10,17 +10,16 @@ class Board;
 
 class MoveGenerator{
 public:
-    MoveGenerator(
-        const Board &board,
-        const Attacks &attacks
-    );
+    MoveGenerator( Board &board, const Attacks &attacks);
 
-    int generateMoves(Move moves[]);
+    int generateLegalMoves(Move moves[]);
     int getMoveCount() const { return cnt; }
 
 private:
-    const Board& board;
+    Board& board;
     const Attacks& attacks;
+
+    int generatePseudoMoves(Move moves[]);
 
     int cnt;
 
