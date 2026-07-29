@@ -34,26 +34,6 @@ void Board::clear(){
     ply=0;
 }
 
-Piece Board::charToPiece(char c){
-    switch (c) {
-        case 'P': return WP;
-        case 'N': return WN;
-        case 'B': return WB;
-        case 'R': return WR;
-        case 'Q': return WQ;
-        case 'K': return WK;
-
-        case 'p': return BP;
-        case 'n': return BN;
-        case 'b': return BB;
-        case 'r': return BR;
-        case 'q': return BQ;
-        case 'k': return BK;
-
-        default:  return EMPTY;
-    }
-}
-
 Square Board::parseEnPassantSquare(char file,int rank,Color tomove){
     if(rank==3 && tomove==BLACK){
         if(file=='a') return A3;
@@ -499,7 +479,7 @@ bool Board::makeMove(const Move &move){
         }
     }
 
-    else if(moved == WR){
+    if(moved == WR){
         if(from == A1){
             castlingRights &= ~CASTLE_WQ;
         }
@@ -521,7 +501,7 @@ bool Board::makeMove(const Move &move){
     }
 
 
-    else if(captured == BR){
+    if(captured == BR){
         if(to == A8){
             castlingRights &= ~CASTLE_BQ;
         }

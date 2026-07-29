@@ -15,16 +15,19 @@ public:
         const Attacks &attacks
     );
 
-    void generateMoves(std::vector<Move>& moves) const;
+    int generateMoves(Move moves[]);
+    int getMoveCount() const { return cnt; }
 
 private:
     const Board& board;
     const Attacks& attacks;
 
-    void generateBishopMoves(std::vector<Move> &moves) const;
-    void generateKingMoves(std::vector<Move> &moves) const;
-    void generateKnightMoves(std::vector<Move> &moves) const;
-    void generateQueenMoves(std::vector<Move> &moves) const;
-    void generateRookMoves(std::vector<Move> &moves) const;
-    void generatePawnMoves(std::vector<Move> &moves) const;
+    int cnt;
+
+    void generateBishopMoves(Move moves[]);
+    void generateKingMoves(Move moves[]);
+    void generateKnightMoves(Move moves[]);
+    void generateQueenMoves(Move moves[]);
+    void generateRookMoves(Move moves[]);
+    void generatePawnMoves(Move moves[]);
 };

@@ -38,6 +38,7 @@ enum MoveFlag{
 
 class Move{
 public:
+    Move() = default;
     Move(
         Square from,
         Square to,

@@ -5,6 +5,54 @@
 
 using namespace std;
 
+
+constexpr Piece getPiece(char c, Color side) {
+    switch (c) {
+        case 'q': return (side == WHITE) ? WQ : BQ;
+        case 'r': return (side == WHITE) ? WR : BR;
+        case 'b': return (side == WHITE) ? WB : BB;
+        case 'n': return (side == WHITE) ? WN : BN;
+        default:  return EMPTY;
+    }
+}
+
+
+void UCI::playMoves(istringstream &iss){
+    string pos;
+    ParsedMove move;
+    
+    while(iss>>pos){
+        if(parseUCIMove(pos, move) == false){
+            cout<<"Invalid move";
+            return ;
+        }
+    }
+}
+
+
+bool UCI::parseUCIMove(const string &pos, ParsedMove &move){
+    if(pos.size()<4 || pos.size()>5) return false;
+
+    Square from = charToSquare(pos[0], pos[1]);
+    Square to = charToSquare(pos[2], pos[3]);
+    Piece promotion = EMPTY;
+
+    if(from == NO_SQUARE || to == NO_SQUARE) return false;
+
+    if(pos.size() == 5){
+        promotion = getPiece(pos[4], board.getMovingSide());
+
+        if(promotion == EMPTY) return false;
+    }
+
+    move.from = from;
+    move.to = to;
+    move.promotion = promotion;
+
+    return true;
+}
+
+
 void UCI::loop() {
     string command;
 
@@ -68,13 +116,6 @@ void UCI::handlePosition(istringstream &iss){
 
     if(token == "startpos"){
         newgame();
-        string word;
-
-        if(iss >> word){
-            if(word == "moves"){
-                // left for later
-            }
-        }
     }
 
     else if(token == "fen"){
@@ -96,5 +137,18 @@ void UCI::handlePosition(istringstream &iss){
 
     else {
         cout<<"Unknown position Command\n";
+    }
+
+
+    // parsing moves
+    string word;
+
+    if(iss >> word){
+        if(word != "moves"){
+            cout<<"Invalid move Command";
+            return ;
+        }
+        
+        playMoves(iss);
     }
 }

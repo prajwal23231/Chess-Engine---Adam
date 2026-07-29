@@ -3,6 +3,13 @@
 #include <string>
 #include "board/board.h"
 
+
+struct ParsedMove{
+    Square from;
+    Square to;
+    Piece promotion = EMPTY;
+};
+
 class UCI{
 public:
     UCI() = default;
@@ -17,4 +24,8 @@ private:
     void handleQuit();
     void newgame();
     void handlePosition(istringstream &iss);
+
+    // helper
+    bool parseUCIMove(const string& pos, ParsedMove& move);
+    void playMoves(istringstream &iss);
 };

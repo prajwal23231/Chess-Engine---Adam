@@ -8,21 +8,22 @@ using namespace Bitboard;
 
 MoveGenerator::MoveGenerator(const Board &board, const Attacks &attacks)
     : board(board), attacks(attacks){
+    cnt=0;
 }
 
-void MoveGenerator::generateMoves(vector<Move>& moves) const{
-    moves.clear();
-
+int MoveGenerator::generateMoves(Move moves[]){
+    cnt = 0;
     generateKnightMoves(moves);
     generateKingMoves(moves);
     generatePawnMoves(moves);
     generateBishopMoves(moves);
     generateRookMoves(moves);
     generateQueenMoves(moves);
+    return cnt;
 }
 
 
-void MoveGenerator::generateKnightMoves(vector<Move>& moves) const{
+void MoveGenerator::generateKnightMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WN : BN);
 
@@ -42,13 +43,13 @@ void MoveGenerator::generateKnightMoves(vector<Move>& moves) const{
 
             MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
         }
     }
 }
 
 
-void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
+void MoveGenerator::generatePawnMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WP : BP);
 
@@ -99,12 +100,12 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
             // promotion check
             if(cur_rank == fin_rank ) {
                 for(Piece prom : all_prom){
-                    moves.emplace_back(s, dest, p, captured, prom, promotion_capture);
+                    moves[cnt++] = Move(s, dest, p, captured, prom, promotion_capture);
                 }
             }
 
             else{
-                moves.emplace_back(s, dest, p, captured, EMPTY, flag);
+                moves[cnt++] = Move(s, dest, p, captured, EMPTY, flag);
             }
         }
 
@@ -121,12 +122,12 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
         // promotion check
         if(new_rank == fin_rank){
             for(Piece prom : all_prom){
-                moves.emplace_back(s, single_push, p, EMPTY, prom, promotion);
+                moves[cnt++] = Move(s, single_push, p, EMPTY, prom, promotion);
             }
         }
 
         else{
-            moves.emplace_back(s, single_push, p, EMPTY, EMPTY, quiet);
+            moves[cnt++] = Move(s, single_push, p, EMPTY, EMPTY, quiet);
         }
 
 
@@ -138,13 +139,13 @@ void MoveGenerator::generatePawnMoves(vector<Move>& moves) const{
             continue;
         }
 
-        moves.emplace_back(s, double_push, p, EMPTY, EMPTY, doublePawnPush);
+        moves[cnt++] = Move(s, double_push, p, EMPTY, EMPTY, doublePawnPush);
     }
 }
 
 
 
-void MoveGenerator::generateKingMoves(vector<Move>& moves) const{
+void MoveGenerator::generateKingMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WK : BK);
 
@@ -165,7 +166,7 @@ void MoveGenerator::generateKingMoves(vector<Move>& moves) const{
 
             MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
         }
     }
 
@@ -177,14 +178,14 @@ void MoveGenerator::generateKingMoves(vector<Move>& moves) const{
         if(castle & CASTLE_WK){
             // checking for empty path
             if(board.getPieceBoard(F1) == EMPTY && board.getPieceBoard(G1) == EMPTY){
-                moves.emplace_back(E1, G1, p, EMPTY, EMPTY, kingSideCastle);
+                moves[cnt++] = Move(E1, G1, p, EMPTY, EMPTY, kingSideCastle);
             }
         }
 
         if(castle & CASTLE_WQ){
             // checking for empty path
             if(board.getPieceBoard(D1) == EMPTY && board.getPieceBoard(C1) == EMPTY && board.getPieceBoard(B1) == EMPTY){
-                moves.emplace_back(E1, C1, p, EMPTY, EMPTY, queenSideCastle);
+                moves[cnt++] = Move(E1, C1, p, EMPTY, EMPTY, queenSideCastle);
             }
         }
     }
@@ -194,21 +195,21 @@ void MoveGenerator::generateKingMoves(vector<Move>& moves) const{
         if(castle & CASTLE_BK){
             // checking for empty path
             if(board.getPieceBoard(F8) == EMPTY && board.getPieceBoard(G8) == EMPTY){
-                moves.emplace_back(E8, G8, p, EMPTY, EMPTY, kingSideCastle);
+                moves[cnt++] = Move(E8, G8, p, EMPTY, EMPTY, kingSideCastle);
             }
         }
 
         if(castle & CASTLE_BQ){
             // checking for empty path
             if(board.getPieceBoard(D8) == EMPTY && board.getPieceBoard(C8) == EMPTY && board.getPieceBoard(B8) == EMPTY){
-                moves.emplace_back(E8, C8, p, EMPTY, EMPTY, queenSideCastle);
+                moves[cnt++] = Move(E8, C8, p, EMPTY, EMPTY, queenSideCastle);
             }
         }
     }
 }
 
 
-void MoveGenerator::generateBishopMoves(vector<Move>& moves) const{
+void MoveGenerator::generateBishopMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WB : BB);
 
@@ -229,13 +230,13 @@ void MoveGenerator::generateBishopMoves(vector<Move>& moves) const{
 
             MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
         }
     }
 }
 
 
-void MoveGenerator::generateRookMoves(vector<Move>& moves) const{
+void MoveGenerator::generateRookMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WR : BR);
 
@@ -256,13 +257,13 @@ void MoveGenerator::generateRookMoves(vector<Move>& moves) const{
 
             MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
         }
     }
 }
 
 
-void MoveGenerator::generateQueenMoves(vector<Move>& moves) const{
+void MoveGenerator::generateQueenMoves(Move moves[]){
     Color movingSide = board.getMovingSide();
     Piece p = (movingSide==WHITE ? WQ : BQ);
 
@@ -283,7 +284,7 @@ void MoveGenerator::generateQueenMoves(vector<Move>& moves) const{
 
             MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-            moves.emplace_back(s, dest, p, captured, EMPTY, f);
+            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
         }
     }
 }

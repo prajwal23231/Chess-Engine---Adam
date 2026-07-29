@@ -9,7 +9,8 @@ constexpr int NUM_PIECES = 12;
 constexpr int NUM_COLORS = 3;
 constexpr int BOARD_SIZE = 64;
 constexpr int RANK_SIZE = 8;
-constexpr int MAX_PLYS = 128;
+constexpr int MAX_PLYS = 1024;
+constexpr int MAX_MOVES = 256;
 
 enum Color { WHITE, BLACK, BOTH };
 
@@ -38,3 +39,35 @@ enum Castling { CASTLE_WK = 1, CASTLE_WQ = 2, CASTLE_BK = 4, CASTLE_BQ = 8 };
 
 constexpr int getRank(Square s) {return s/RANK_SIZE;}
 constexpr int getFile(Square s) {return s%RANK_SIZE;}
+
+
+constexpr Square charToSquare(char file, char rank) {
+    if (file < 'a' || file > 'h' || rank < '1' || rank > '8')
+        return NO_SQUARE;
+
+    int f = file - 'a';
+    int r = rank - '1';
+
+    return static_cast<Square>(r * 8 + f);
+}
+
+
+constexpr Piece charToPiece(char c) {
+    switch (c) {
+        case 'P': return WP;
+        case 'N': return WN;
+        case 'B': return WB;
+        case 'R': return WR;
+        case 'Q': return WQ;
+        case 'K': return WK;
+
+        case 'p': return BP;
+        case 'n': return BN;
+        case 'b': return BB;
+        case 'r': return BR;
+        case 'q': return BQ;
+        case 'k': return BK;
+
+        default:  return EMPTY;
+    }
+}

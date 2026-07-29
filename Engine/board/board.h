@@ -52,7 +52,6 @@ private:
 
     U64 zobristKey;
     
-    Piece charToPiece(char c);
     Square parseEnPassantSquare(char pos,int rank,Color tomove);
     void rebuildBitboards();
     static char pieceToChar(Piece p);
