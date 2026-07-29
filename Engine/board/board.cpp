@@ -15,6 +15,9 @@ Board::Board(){
     initPawnAttacks();
     initKingAttacks();
     initKnightAttacks();
+
+    // initialised at the end
+    zobristKey = Zobrist::generateHash(*this);
 }
 
 void Board::clear(){
@@ -252,12 +255,12 @@ bool Board::loadFEN(const string &fen){
     halfmoveClock = halfmove;
     fullmoveNumber = fullmove;
 
-    zobristKey = Zobrist::generateHash(*this);
-
     rebuildBitboards();
     updateOccupancies();
 
     ply=0;
+
+    zobristKey = Zobrist::generateHash(*this);
 
     return true;
 }
@@ -388,7 +391,7 @@ bool Board::makeMove(const Move &move){
 
     // removing the moved piece from source
     clearBit(occupancies[sideToMove], from);
-    setBit(occupancies[BOTH], from);
+    clearBit(occupancies[BOTH], from);
     board[from] = EMPTY;
     clearBit(bitboards[moved], from);
 
@@ -547,6 +550,8 @@ bool Board::makeMove(const Move &move){
     if(sideToMove == WHITE) ++fullmoveNumber;
     if(flag != doublePawnPush) enPassant = NO_SQUARE;
 
+    zobristKey = Zobrist::generateHash(*this);
+
     return true;
 }
 
@@ -654,6 +659,8 @@ void Board::undoMove(const Move &move){
     
     sideToMove = opp;
     if(sideToMove == BLACK) --fullmoveNumber;
+
+    zobristKey = Zobrist::generateHash(*this);
 }
 
 
@@ -663,8 +670,8 @@ void Board::initPawnAttacks(){
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square s = static_cast<Square>(i);
-        int cur_rank = getRank(i);
-        int cur_file = getFile(i);
+        int cur_rank = getRank(s);
+        int cur_file = getFile(s);
 
         // white
         U64 wAttack = 0;
@@ -705,8 +712,8 @@ void Board::initKingAttacks(){
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square s = static_cast<Square>(i);
-        int cur_rank = getRank(i);
-        int cur_file = getFile(i);
+        int cur_rank = getRank(s);
+        int cur_file = getFile(s);
 
         U64 kAttack = 0;
         
@@ -730,8 +737,8 @@ void Board::initKnightAttacks(){
 
     for(int i=0; i<BOARD_SIZE; i++){
         Square s = static_cast<Square>(i);
-        int cur_rank = getRank(i);
-        int cur_file = getFile(i);
+        int cur_rank = getRank(s);
+        int cur_file = getFile(s);
 
         U64 nAttack = 0;
         
@@ -792,4 +799,9 @@ bool Board::isSquareAttacked(Square square, Color bySide) const{
 
 
     return false;
+}
+
+
+U64 Board::getZobristKey() const{
+    return zobristKey;
 }

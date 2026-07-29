@@ -33,23 +33,23 @@ int main() {
 
     testRoundTrip(E2, E4, WP, EMPTY, EMPTY, doublePawnPush, "double pawn push");
     testRoundTrip(A1, H8, WR, EMPTY, EMPTY, quiet, "corner-to-corner quiet");
-    testRoundTrip(H8, A1, BQ, WP, EMPTY, quiet, "corner-to-corner capture");
+    testRoundTrip(H8, A1, BQ, WP, EMPTY, capture, "corner-to-corner capture");
 
     Piece allPieces[] = { WP,WN,WR,WB,WQ,WK, BP,BN,BR,BB,BQ,BK };
     for (Piece p : allPieces) testRoundTrip(D2, D4, p, EMPTY, EMPTY, quiet, "moved-piece sweep");
-    for (Piece p : allPieces) testRoundTrip(D2, D4, WP, p, EMPTY, quiet, "captured-piece sweep");
+    for (Piece p : allPieces) testRoundTrip(D2, D4, WP, p, EMPTY, (p == EMPTY ? quiet : capture), "captured-piece sweep");
 
     Piece promoPieces[] = { EMPTY, WN, WB, WR, WQ, BN, BB, BR, BQ };
-    for (Piece p : promoPieces) testRoundTrip(A7, A8, WP, EMPTY, p, quiet, "promotion sweep");
+    for (Piece p : promoPieces) testRoundTrip(A7, A8, WP, EMPTY, p, (p == EMPTY ? quiet : promotion), "promotion sweep");
 
-    MoveFlag flags[] = { quiet, doublePawnPush, kingSideCastle, queenSideCastle, enPassant };
+    MoveFlag flags[] = { quiet, capture, doublePawnPush, kingSideCastle, queenSideCastle, enPassant, promotion, promotion_capture };
     for (MoveFlag f : flags) testRoundTrip(E1, G1, WK, EMPTY, EMPTY, f, "flag sweep");
 
     {
         Move quietMove(E2, E4, WP, EMPTY, EMPTY, doublePawnPush);
         CHECK(quietMove.isCapture() == false, "quiet move should not be capture");
 
-        Move captureMove(E4, D5, WP, BP, EMPTY, quiet);
+        Move captureMove(E4, D5, WP, BP, EMPTY, capture);
         CHECK(captureMove.isCapture() == true, "pawn capture should be capture");
     }
 
@@ -57,12 +57,12 @@ int main() {
         Move noPromo(A7, A8, WP, EMPTY, EMPTY, quiet);
         CHECK(noPromo.isPromotion() == false, "no promo field should not be promotion");
 
-        Move withPromo(A7, A8, WP, EMPTY, WQ, quiet);
+        Move withPromo(A7, A8, WP, EMPTY, WQ, promotion);
         CHECK(withPromo.isPromotion() == true, "promo field set should be promotion");
     }
 
     {
-        Move capPromo(B7, A8, WP, BR, WQ, quiet);
+        Move capPromo(B7, A8, WP, BR, WQ, promotion_capture);
         CHECK(capPromo.isCapture() == true, "capture+promo: isCapture true");
         CHECK(capPromo.isPromotion() == true, "capture+promo: isPromotion true");
         CHECK(capPromo.getCapturedPiece() == BR, "capture+promo: captured piece correct");
@@ -119,7 +119,7 @@ int main() {
     }
 
     Piece blackPromoPieces[] = { BN, BB, BR, BQ };
-    for (Piece p : blackPromoPieces) testRoundTrip(D2, D1, BP, EMPTY, p, quiet, "black promotion sweep");
+    for (Piece p : blackPromoPieces) testRoundTrip(D2, D1, BP, EMPTY, p, promotion, "black promotion sweep");
 
     {
         Move blackEp(D4, C3, BP, WP, EMPTY, enPassant);
@@ -147,7 +147,7 @@ int main() {
         Piece whitePromos[] = { WN, WB, WR, WQ };
         Piece blackCaptured[] = { BN, BB, BR, BQ };
         for (int i = 0; i < 4; i++) {
-            Move m(B7, A8, WP, blackCaptured[i], whitePromos[i], quiet);
+            Move m(B7, A8, WP, blackCaptured[i], whitePromos[i], promotion_capture);
             CHECK(m.getPromotion() == whitePromos[i], "white capture-promo: promo field");
             CHECK(m.getCapturedPiece() == blackCaptured[i], "white capture-promo: captured field");
             CHECK(m.isCapture() && m.isPromotion(), "white capture-promo: both flags true");
@@ -156,7 +156,7 @@ int main() {
         Piece blackPromos[] = { BN, BB, BR, BQ };
         Piece whiteCaptured[] = { WN, WB, WR, WQ };
         for (int i = 0; i < 4; i++) {
-            Move m(B2, A1, BP, whiteCaptured[i], blackPromos[i], quiet);
+            Move m(B2, A1, BP, whiteCaptured[i], blackPromos[i], promotion_capture);
             CHECK(m.getPromotion() == blackPromos[i], "black capture-promo: promo field");
             CHECK(m.getCapturedPiece() == whiteCaptured[i], "black capture-promo: captured field");
             CHECK(m.isCapture() && m.isPromotion(), "black capture-promo: both flags true");
@@ -199,7 +199,7 @@ int main() {
     }
 
     {
-        Move original(D7, D8, WP, BN, WQ, quiet);
+        Move original(D7, D8, WP, BN, WQ, promotion_capture);
         Move copy = original;
         CHECK(copy.getValue() == original.getValue(), "copy constructor preserves raw value");
         CHECK(copy.getFrom() == original.getFrom(), "copy preserves from");
@@ -222,7 +222,7 @@ int main() {
     }
 
     testRoundTrip(E4, E5, WK, EMPTY, EMPTY, quiet, "king one-square move");
-    testRoundTrip(E4, D5, WK, BP, EMPTY, quiet, "king diagonal capture");
+    testRoundTrip(E4, D5, WK, BP, EMPTY, capture, "king diagonal capture");
 
     // ===================== SUMMARY =====================
     cout << "\n" << (testsRun - testsFailed) << "/" << testsRun << " checks passed.\n";

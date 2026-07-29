@@ -2,6 +2,10 @@
 #include "board/board.h"
 #include <random>
 
+U64 Zobrist::pieceKeys[NUM_PIECES][BOARD_SIZE];
+U64 Zobrist::castleKeys[16];
+U64 Zobrist::enPassantKeys[8];
+U64 Zobrist::sideKey;
 
 U64 Zobrist::generateRandom(){
     static std::mt19937_64 rng(0xDEADBEEFCAFEBABEULL);

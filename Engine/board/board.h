@@ -32,6 +32,8 @@ public:
 
     bool isSquareAttacked(Square square, Color bySide) const;
 
+    U64 getZobristKey() const;
+
 private:
     std::array<U64, NUM_PIECES> bitboards;
     std::array<Piece, BOARD_SIZE> board;

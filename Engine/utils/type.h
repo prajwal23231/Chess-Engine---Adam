@@ -11,9 +11,6 @@ constexpr int BOARD_SIZE = 64;
 constexpr int RANK_SIZE = 8;
 constexpr int MAX_PLYS = 128;
 
-constexpr int getRank(Square s) {return s/RANK_SIZE;}
-constexpr int getFile(Square s) {return s%RANK_SIZE;}
-
 enum Color { WHITE, BLACK, BOTH };
 
 enum Piece {
@@ -37,3 +34,7 @@ enum Square {
 };
 
 enum Castling { CASTLE_WK = 1, CASTLE_WQ = 2, CASTLE_BK = 4, CASTLE_BQ = 8 };
+
+
+constexpr int getRank(Square s) {return s/RANK_SIZE;}
+constexpr int getFile(Square s) {return s%RANK_SIZE;}

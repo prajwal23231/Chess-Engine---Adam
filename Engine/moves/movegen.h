@@ -1,10 +1,12 @@
 #pragma once
 #include "utils/type.h"
 #include "attack/attacks.h"
-#include "board/board.h"
 #include <vector>
 #include "move.h"
 #include "utils/bitboard_utilities.h"
+
+
+class Board;
 
 class MoveGenerator{
 public:

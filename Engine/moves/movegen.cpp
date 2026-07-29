@@ -1,4 +1,5 @@
 #include "movegen.h"
+#include "board/board.h"
 #include <array>
 
 using namespace std;
