@@ -22,6 +22,8 @@ class MoveGenerator{
 public:
     MoveGenerator(Board &board);
 
+    int generateLegalMoves(Move moves[]);
+
 private:
     Board& board;
 

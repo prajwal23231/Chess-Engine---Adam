@@ -9,7 +9,6 @@ using namespace Bitboard;
 MoveGenerator::MoveGenerator(Board &board) : board(board){
     cnt = 0;
 
-    createAttackMap();
     computeBetween();
 }
 
@@ -78,271 +77,6 @@ void MoveGenerator::computeBetween(){
         }
     }
 }
-
-
-void MoveGenerator::generateKnightMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WN : BN);
-
-    U64 bb = board.getBitboard(p);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getKnightAttack(s);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (captured == EMPTY ? quiet : capture);
-
-            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
-        }
-    }
-}
-
-void MoveGenerator::generatePawnMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WP : BP);
-
-    U64 bb = board.getBitboard(p);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    const array<Piece, 4> all_prom =
-        (movingSide == WHITE ? array<Piece, 4>{WQ, WR, WB, WN}
-                            : array<Piece, 4>{BQ, BR, BB, BN});
-
-    const int fin_rank = (movingSide == WHITE ? RANK_SIZE - 1 : 0);
-
-    const int rankOffset = (movingSide == WHITE ? 1 : -1);
-
-    const int first_rank = (movingSide == WHITE ? 1 : 6);
-
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack;
-
-        if (movingSide == WHITE)
-        all_attack = attacks.getWhitePawnAttack(s);
-        else
-        all_attack = attacks.getBlackPawnAttack(s);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        // capture move
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            // enpassant check
-            int cur_rank = getRank(dest);
-
-            MoveFlag flag = capture;
-
-            if (board.getEnPassant() == dest && captured == EMPTY) {
-                flag = enPassant;
-                captured = (movingSide == WHITE ? BP : WP);
-            }
-
-            if (captured == EMPTY && flag != enPassant)
-                continue;
-
-            // promotion check
-            if (cur_rank == fin_rank) {
-                for (Piece prom : all_prom) {
-                moves[cnt++] = Move(s, dest, p, captured, prom, promotion_capture);
-                }
-            }
-
-            else {
-                moves[cnt++] = Move(s, dest, p, captured, EMPTY, flag);
-            }
-        }
-
-        // single push
-        int cur_rank = getRank(s);
-        int new_rank = cur_rank + rankOffset;
-        int cur_file = getFile(s);
-
-        Square single_push = static_cast<Square>(new_rank * RANK_SIZE + cur_file);
-
-        if (board.getPieceBoard(single_push) != EMPTY)
-            continue;
-
-        // promotion check
-        if (new_rank == fin_rank) {
-            for (Piece prom : all_prom) {
-                moves[cnt++] = Move(s, single_push, p, EMPTY, prom, promotion);
-            }
-        }
-
-        else {
-            moves[cnt++] = Move(s, single_push, p, EMPTY, EMPTY, quiet);
-        }
-
-        // double pawn push check
-        Square double_push =
-            static_cast<Square>((cur_rank + 2 * rankOffset) * RANK_SIZE + cur_file);
-
-        if (cur_rank != first_rank || board.getPieceBoard(double_push) != EMPTY) {
-            continue;
-        }
-
-        moves[cnt++] = Move(s, double_push, p, EMPTY, EMPTY, doublePawnPush);
-    }
-}
-
-void MoveGenerator::generateKingMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WK : BK);
-
-    U64 bb = board.getBitboard(p);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    // capture or normal move
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getKingAttack(s);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (captured == EMPTY ? quiet : capture);
-
-            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
-        }
-    }
-
-    // castling part
-    int castle = board.getCastlingRights();
-
-    if (movingSide == WHITE) {
-        if (castle & CASTLE_WK) {
-        // checking for empty path
-            if (board.getPieceBoard(F1) == EMPTY &&
-                board.getPieceBoard(G1) == EMPTY) {
-                moves[cnt++] = Move(E1, G1, p, EMPTY, EMPTY, kingSideCastle);
-            }
-        }
-
-        if (castle & CASTLE_WQ) {
-        // checking for empty path
-            if (board.getPieceBoard(D1) == EMPTY &&
-                board.getPieceBoard(C1) == EMPTY &&
-                board.getPieceBoard(B1) == EMPTY) {
-                moves[cnt++] = Move(E1, C1, p, EMPTY, EMPTY, queenSideCastle);
-            }
-        }
-    }
-
-    else {
-        if (castle & CASTLE_BK) {
-        // checking for empty path
-            if (board.getPieceBoard(F8) == EMPTY &&
-                board.getPieceBoard(G8) == EMPTY) {
-                moves[cnt++] = Move(E8, G8, p, EMPTY, EMPTY, kingSideCastle);
-            }
-        }
-
-        if (castle & CASTLE_BQ) {
-        // checking for empty path
-            if (board.getPieceBoard(D8) == EMPTY &&
-                board.getPieceBoard(C8) == EMPTY &&
-                board.getPieceBoard(B8) == EMPTY) {
-                moves[cnt++] = Move(E8, C8, p, EMPTY, EMPTY, queenSideCastle);
-            }
-        }
-    }
-}
-
-void MoveGenerator::generateBishopMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WB : BB);
-
-    U64 bb = board.getBitboard(p);
-    U64 both_occ = board.getOccupancy(BOTH);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getBishopAttack(s, both_occ);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (captured == EMPTY ? quiet : capture);
-
-            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
-        }
-    }
-}
-
-void MoveGenerator::generateRookMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WR : BR);
-
-    U64 bb = board.getBitboard(p);
-    U64 both_occ = board.getOccupancy(BOTH);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getRookAttack(s, both_occ);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (captured == EMPTY ? quiet : capture);
-
-            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
-        }
-    }
-}
-
-void MoveGenerator::generateQueenMoves(Move moves[]) {
-    Color movingSide = board.getMovingSide();
-    Piece p = (movingSide == WHITE ? WQ : BQ);
-
-    U64 bb = board.getBitboard(p);
-    U64 both_occ = board.getOccupancy(BOTH);
-    U64 movingSideOcc = board.getOccupancy(movingSide);
-
-    while (bb != 0) {
-        Square s = static_cast<Square>(popLSB(bb));
-
-        U64 all_attack = attacks.getQueenAttack(s, both_occ);
-
-        all_attack = all_attack & (~movingSideOcc);
-
-        while (all_attack != 0) {
-            Square dest = static_cast<Square>(popLSB(all_attack));
-            Piece captured = board.getPieceBoard(dest);
-
-            MoveFlag f = (captured == EMPTY ? quiet : capture);
-
-            moves[cnt++] = Move(s, dest, p, captured, EMPTY, f);
-        }
-    }
-}
-
 
 
 Square MoveGenerator::getKingpos() const{
@@ -530,112 +264,70 @@ void MoveGenerator::computeDiagonalPins(CheckInfo& info) const{
     Piece queen = (toMove == WHITE ? BQ : WQ);
     Piece bishop = (toMove == WHITE ? BB : WB);
 
-    Square kingSq = getKingpos();
+    Square kingsq = getKingpos();
+    U64 occ = board.getOccupancy(BOTH);
+    U64 friendOcc = board.getOccupancy(toMove);
+    
+    U64 bishopray = attacks.getBishopAttack(kingsq, occ);
+    U64 blockers = bishopray & board.getOccupancy(toMove);
 
-    int cur_rank = getRank(kingSq);
-    int cur_file = getFile(kingSq);
+    if(blockers == 0) return ;
 
-    constexpr int dr[4] = {1, 1, -1, -1};
-    constexpr int df[4] = {1, -1, 1, -1};
+    U64 complete = attacks.getBishopAttack(kingsq, occ^blockers);
+    U64 pinners = complete & (board.getBitboard(queen) | board.getBitboard(bishop));
 
-    U64 occ = board.getOccupancy(toMove);
+    while(pinners){
+        Square pinner = static_cast<Square>(popLSB(pinners));
 
-    for(int i=0; i<4; i++){
-        int new_rank = cur_rank + dr[i];
-        int new_file = cur_file + df[i];
-        Square pinned = NO_SQUARE;
+        U64 betweenMask = between[kingsq][pinner];
+        U64 blockers = betweenMask & friendOcc;
 
-        U64 mask = 0;
+        if(popCount(blockers) == 1){
+            Square pinned = static_cast<Square>(popLSB(blockers));
 
-        while(new_rank >= 0 && new_file >= 0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-            Square cur_sq = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-            Piece p = board.getPieceBoard(cur_sq);
-
-            if(occ & (1ULL<<cur_sq)){
-                if(pinned == NO_SQUARE) pinned = cur_sq;
-                
-                else{
-                    pinned = NO_SQUARE;
-                    break;
-                }
-            }
-
-            else if(p != EMPTY){
-                if(p == bishop || p == queen){
-                    if(pinned != NO_SQUARE){
-                        mask |= between[kingSq][cur_sq] | (1ULL << cur_sq); 
-                    }
-                }
-
-                break;
-            }
-
-            new_rank += dr[i];
-            new_file += df[i];
-        }
-
-        if(pinned != NO_SQUARE && mask){
-            info.pinnedRay[pinned] = mask;
             info.pinnedPieces |= (1ULL<<pinned);
+            info.pinnedRay[pinned] = betweenMask | (1ULL<<pinner);
+        }
+    }
+}
+
+
+void MoveGenerator::computeOrthogonalPins(CheckInfo& info) const{
+    Color toMove = board.getMovingSide();
+
+    Piece queen = (toMove == WHITE ? BQ : WQ);
+    Piece rook = (toMove == WHITE ? BR : WR);
+
+    Square kingsq = getKingpos();
+    U64 occ = board.getOccupancy(BOTH);
+    U64 friendOcc = board.getOccupancy(toMove);
+    
+    U64 rookray = attacks.getRookAttack(kingsq, occ);
+    U64 blockers = rookray & board.getOccupancy(toMove);
+
+    if(blockers == 0) return ;
+
+    U64 complete = attacks.getRookAttack(kingsq, occ^blockers);
+    U64 pinners = complete & (board.getBitboard(queen) | board.getBitboard(rook));
+
+    while(pinners){
+        Square pinner = static_cast<Square>(popLSB(pinners));
+
+        U64 betweenMask = between[kingsq][pinner];
+        U64 blockers = betweenMask & friendOcc;
+
+        if(popCount(blockers) == 1){
+            Square pinned = static_cast<Square>(popLSB(blockers));
+
+            info.pinnedPieces |= (1ULL<<pinned);
+            info.pinnedRay[pinned] = betweenMask | (1ULL<<pinner);
         }
     }
 }
 
 
 
-void MoveGenerator::computeOrthogonalPins(CheckInfo& info) const{
-    Color toMove = board.getMovingSide();
-
-    Piece rook = (toMove == WHITE ? BR : WR);
-    Piece queen = (toMove == WHITE ? BQ : WQ);
-
-    Square kingSq = getKingpos();
-
-    int cur_rank = getRank(kingSq);
-    int cur_file = getFile(kingSq);
-
-    constexpr int dr[4] = {1, 0, -1, 0};
-    constexpr int df[4] = {0, -1, 0, 1};
-
-    U64 occ = board.getOccupancy(toMove);
-
-    for(int i=0; i<4; i++){
-        int new_rank = cur_rank + dr[i];
-        int new_file = cur_file + df[i];
-        Square pinned = NO_SQUARE;
-
-        U64 mask = 0;
-
-        while(new_rank >= 0 && new_file >= 0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-            Square cur_sq = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-            Piece p = board.getPieceBoard(cur_sq);
-
-            if(occ & (1ULL<<cur_sq)){
-                if(pinned == NO_SQUARE) pinned = cur_sq;
-
-                else{
-                    pinned = NO_SQUARE;
-                    break;
-                }
-            }
-
-            else if(p != EMPTY){
-                if(p == rook || p == queen){
-                    if(pinned != NO_SQUARE){
-                        mask |= between[kingSq][cur_sq] | (1ULL << cur_sq);
-                    }
-                }
-
-                break;
-            }
-
-            new_rank += dr[i];
-            new_file += df[i];
-        }
-
-        if(pinned != NO_SQUARE && mask){
-            info.pinnedRay[pinned] = mask;
-            info.pinnedPieces |= (1ULL<<pinned);
-        }
-    }
+int MoveGenerator::generateLegalMoves(Move moves[]){
+    createAttackMap();
+    CheckInfo info = analyzeChecks();
 }
