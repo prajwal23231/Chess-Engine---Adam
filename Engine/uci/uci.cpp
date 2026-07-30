@@ -1,7 +1,6 @@
 #include "uci.h"
 #include <cstdlib>
 #include <iostream>
-#include <sstream>
 
 using namespace std;
 
@@ -87,6 +86,10 @@ void UCI::parseCommand(const string& command){
         handlePosition(iss);
     }
 
+    else if(cmd=="perft"){
+        handlePerft(iss);
+    }
+
     else{
         cout<<"Unknon Command : "<<cmd<<"\n";
     }
@@ -151,4 +154,30 @@ void UCI::handlePosition(istringstream &iss){
         
         playMoves(iss);
     }
+}
+
+
+void UCI::handlePerft(istringstream &iss){
+    int depth;
+    
+    if (!(iss >> depth)) {
+        std::cout << "Invalid perft depth\n";
+        return;
+    }
+
+    string word;
+
+    if ((iss >> word)) {
+        std::cout << "Invalid perft command\n";
+        return;
+    }
+
+    MoveGenerator moveGen(board);
+
+    Move moves[MAX_MOVES];
+    moveGen.generateLegalMoves(moves);
+
+    Perft perft(board, moveGen);
+    
+    perft.benchmark(depth);
 }

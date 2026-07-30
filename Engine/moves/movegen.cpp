@@ -6,8 +6,7 @@ using namespace std;
 using namespace Bitboard;
 
 
-MoveGenerator::MoveGenerator(Board &board, const Attacks &attacks)
-    : board(board), attacks(attacks) {
+MoveGenerator::MoveGenerator(Board &board) : board(board){
     cnt = 0;
 }
 
@@ -16,6 +15,7 @@ int MoveGenerator::generateLegalMoves(Move moves[]) {
     generatePseudoMoves(moves);
 
     Color toMove = board.getMovingSide();
+    Color opp = (toMove == WHITE ? BLACK : WHITE);
     int legal = 0;
 
     for (int i = 0; i < cnt; i++) {
@@ -25,32 +25,32 @@ int MoveGenerator::generateLegalMoves(Move moves[]) {
 
 
             if(moved == WK){
-                if(board.isSquareAttacked(E1)) continue;
+                if(board.isSquareAttacked(E1, opp)) continue;
             }
 
             else{
-                if(board.isSquareAttacked(E8)) continue;
+                if(board.isSquareAttacked(E8, opp)) continue;
             }
 
 
 
             if(f == kingSideCastle){
                 if(moved == WK){
-                    if(board.isSquareAttacked(F1)) continue;
+                    if(board.isSquareAttacked(F1, opp)) continue;
                 }
 
                 else{
-                    if(board.isSquareAttacked(F8)) continue;
+                    if(board.isSquareAttacked(F8, opp)) continue;
                 }
             }
 
             else{
                 if(moved == WK){
-                    if(board.isSquareAttacked(D1)) continue;
+                    if(board.isSquareAttacked(D1, opp)) continue;
                 }
 
                 else{
-                    if(board.isSquareAttacked(D8)) continue;
+                    if(board.isSquareAttacked(D8, opp)) continue;
                 }
             }
         }
@@ -60,7 +60,7 @@ int MoveGenerator::generateLegalMoves(Move moves[]) {
         U64 kingbb = board.getBitboard((toMove == WHITE) ? WK : BK);
         Square kingPos = static_cast<Square>(popLSB(kingbb));
 
-        if (!board.isSquareAttacked(kingPos)) {
+        if (!board.isSquareAttacked(kingPos, opp)) {
             moves[legal] = moves[i];
             legal++;
         }

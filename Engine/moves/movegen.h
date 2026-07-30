@@ -10,17 +10,14 @@ class Board;
 
 class MoveGenerator{
 public:
-    MoveGenerator( Board &board, const Attacks &attacks);
+    MoveGenerator(Board &board);
 
     int generateLegalMoves(Move moves[]);
+    int generatePseudoMoves(Move moves[]);
     int getMoveCount() const { return cnt; }
 
 private:
     Board& board;
-    const Attacks& attacks;
-
-    int generatePseudoMoves(Move moves[]);
-
     int cnt;
 
     void generateBishopMoves(Move moves[]);

@@ -68,10 +68,29 @@ U64 Zobrist::generateHash(const Board &board){
 
     if(ep != NO_SQUARE){
         int cur_file = getFile(ep);
-
         hash ^= enPassantKeys[cur_file];
     }
 
 
     return hash;
+}
+
+
+U64 Zobrist::getPieceKeys(Piece p,Square s){
+    return pieceKeys[p][s];
+}
+
+
+U64 Zobrist::getCastleKeys(int rights){
+    return castleKeys[rights];
+}
+
+
+U64 Zobrist::getEnPassantKeys(int rank){
+    return enPassantKeys[rank];
+}
+
+
+U64 Zobrist::getSideKey(){
+    return sideKey;
 }

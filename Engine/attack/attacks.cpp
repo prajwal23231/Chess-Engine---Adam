@@ -110,6 +110,21 @@ U64 Attacks::getBlackPawnAttack(Square square) const{
 }
 
 U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
+    return g_magic.getBishopAttack(square, occupancy);
+}
+
+U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
+    return g_magic.getRookAttack(square, occupancy);
+}
+
+U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
+    return getBishopAttack(square, occupancy) | getRookAttack(square, occupancy);
+}
+
+
+// old method
+
+// U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
     // U64 bishopAttack = 0;
 
     // int cur_rank = getRank(square);
@@ -163,11 +178,9 @@ U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
     // }
 
     // return bishopAttack;
+// }
 
-    return g_magic.getBishopAttack(square, occupancy);
-}
-
-U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
+// U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
     // U64 RookAttack = 0;
 
     // int cur_rank = getRank(square);
@@ -221,11 +234,4 @@ U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
     // }
 
     // return RookAttack;
-
-
-    return g_magic.getRookAttack(square, occupancy);
-}
-
-U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
-    return getBishopAttack(square, occupancy) | getRookAttack(square, occupancy);
-}
+// }

@@ -1,7 +1,9 @@
 #pragma once
 #include "utils/type.h"
-#include <string>
 #include "board/board.h"
+#include "perft/perft.h"
+#include <string>
+#include <sstream>
 
 
 struct ParsedMove{
@@ -23,9 +25,10 @@ private:
     void handleIsReady();
     void handleQuit();
     void newgame();
-    void handlePosition(istringstream &iss);
+    void handlePosition(std::istringstream &iss);
+    void handlePerft(std::istringstream &iss);
 
     // helper
-    bool parseUCIMove(const string& pos, ParsedMove& move);
-    void playMoves(istringstream &iss);
+    bool parseUCIMove(const std::string& pos, ParsedMove& move);
+    void playMoves(std::istringstream &iss);
 };

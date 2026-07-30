@@ -12,6 +12,11 @@ public:
     static void init();
     static U64 generateHash(const Board& board);
 
+    static U64 getPieceKeys(Piece p, Square s);
+    static U64 getCastleKeys(int right);
+    static U64 getEnPassantKeys(int rank);
+    static U64 getSideKey();
+
 private:
     static U64 pieceKeys[NUM_PIECES][BOARD_SIZE];
     static U64 castleKeys[16];

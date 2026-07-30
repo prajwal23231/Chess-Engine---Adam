@@ -25,3 +25,6 @@ private:
     std::array<U64,BOARD_SIZE> blackPawnAttack;
     std::array<U64,BOARD_SIZE> whitePawnAttack;
 };
+
+
+inline Attacks attacks;

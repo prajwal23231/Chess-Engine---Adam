@@ -5,4 +5,5 @@ struct UndoInfo{
     int castlingRights;
     Square enpassant;
     int halfMoveClock;
+    U64 zobristKey;
 };

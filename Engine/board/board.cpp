@@ -267,7 +267,9 @@ void Board::updateOccupancies(){
 
 
 void Board::setStartingPosition(){
-    assert(loadFEN(START_FEN));
+    bool ok = loadFEN(START_FEN);
+    assert(ok);
+    (void)ok;
 }
 
 char Board::pieceToChar(Piece p){
@@ -353,7 +355,8 @@ bool Board::makeMove(const Move &move){
     history[ply++] = {
         castlingRights,
         enPassant,
-        halfmoveClock
+        halfmoveClock,
+        zobristKey
     };
 
     Piece moved = move.getMovedPiece();
@@ -368,25 +371,35 @@ bool Board::makeMove(const Move &move){
     assert(board[from]==moved);
     if(!move.isEnPassant()) assert(board[to]==captured);
 
+    
+    // removing old enpassant
+    if(enPassant != NO_SQUARE){
+        zobristKey ^= Zobrist::getEnPassantKeys(getFile(enPassant));
+    }
+
 
     // removing the moved piece from source
     clearBit(occupancies[sideToMove], from);
     clearBit(occupancies[BOTH], from);
     board[from] = EMPTY;
     clearBit(bitboards[moved], from);
+    zobristKey ^= Zobrist::getPieceKeys(moved, from);
 
     // placing moved piece to dest
     setBit(occupancies[BOTH], to);
     setBit(occupancies[sideToMove], to);
+    
 
     if(move.isPromotion()){
         setBit(bitboards[promotionPiece], to);
         board[to] = promotionPiece;
+        zobristKey ^= Zobrist::getPieceKeys(promotionPiece, to);
     }
 
     else{
         setBit(bitboards[moved], to);
         board[to] = moved;
+        zobristKey ^= Zobrist::getPieceKeys(moved, to);
     }
 
 
@@ -399,11 +412,13 @@ bool Board::makeMove(const Move &move){
         board[s] = EMPTY;
         clearBit(occupancies[opp], s);
         clearBit(occupancies[BOTH], s);
+        zobristKey ^= Zobrist::getPieceKeys(captured, s);
     }
 
     else if(move.isCapture()){
         clearBit(bitboards[captured], to);
         clearBit(occupancies[opp], to);
+        zobristKey ^= Zobrist::getPieceKeys(captured, to);
     }
 
 
@@ -412,8 +427,12 @@ bool Board::makeMove(const Move &move){
     if(flag == doublePawnPush){
         int rankOffset = (sideToMove == WHITE ? -RANK_SIZE : RANK_SIZE);
         enPassant = static_cast<Square>(to + rankOffset);
+        zobristKey ^= Zobrist::getEnPassantKeys(getFile(enPassant));
     }
 
+
+    // removing previous castling rights
+    zobristKey ^= Zobrist::getCastleKeys(castlingRights);
 
     // checking for castling
     if((flag  == kingSideCastle) || (flag == queenSideCastle)){
@@ -462,6 +481,8 @@ bool Board::makeMove(const Move &move){
         setBit(occupancies[sideToMove], dest);
         clearBit(occupancies[BOTH], source);
         setBit(occupancies[BOTH], dest);
+        zobristKey ^= Zobrist::getPieceKeys(p, source);
+        zobristKey ^= Zobrist::getPieceKeys(p, dest);
     }
 
 
@@ -521,6 +542,8 @@ bool Board::makeMove(const Move &move){
         }
     }
 
+    // adding new castling rights
+    zobristKey ^= Zobrist::getCastleKeys(castlingRights);
 
 
     if(moved == WP || moved == BP || move.isCapture()) halfmoveClock = 0;
@@ -528,9 +551,10 @@ bool Board::makeMove(const Move &move){
 
     sideToMove = opp;
     if(sideToMove == WHITE) ++fullmoveNumber;
+
     if(flag != doublePawnPush) enPassant = NO_SQUARE;
 
-    zobristKey = Zobrist::generateHash(*this);
+    zobristKey ^= Zobrist::getSideKey();
 
     return true;
 }
@@ -543,6 +567,7 @@ void Board::undoMove(const Move &move){
     castlingRights = data.castlingRights;
     enPassant = data.enpassant;
     halfmoveClock = data.halfMoveClock;
+    zobristKey = data.zobristKey;
 
     Piece moved = move.getMovedPiece();
     Piece captured = move.getCapturedPiece();
@@ -639,8 +664,6 @@ void Board::undoMove(const Move &move){
     
     sideToMove = opp;
     if(sideToMove == BLACK) --fullmoveNumber;
-
-    zobristKey = Zobrist::generateHash(*this);
 }
 
 
@@ -734,53 +757,6 @@ void Board::initKnightAttacks(){
 
         knightAttacks[s] = nAttack;
     }
-}
-
-
-bool Board::isSquareAttacked(Square square) const{
-
-    Color bySide = (sideToMove == WHITE ? BLACK : WHITE);
-
-    Piece pawn   = (bySide == WHITE ? WP : BP);
-    Piece knight = (bySide == WHITE ? WN : BN);
-    Piece bishop = (bySide == WHITE ? WB : BB);
-    Piece rook   = (bySide == WHITE ? WR : BR);
-    Piece queen  = (bySide == WHITE ? WQ : BQ);
-    Piece king   = (bySide == WHITE ? WK : BK);
-    Color opp = (bySide == WHITE ? BLACK : WHITE);
-
-
-
-    // white pawn attack
-    U64 pawnAttack = pawnAttacks[opp][square];
-    if(pawnAttack & bitboards[pawn]) return true;
-    
-
-    // king attack
-    U64 kingAttack = kingAttacks[square];
-    if(kingAttack & bitboards[king]) return true;
-
-
-    // knight attack
-    U64 knightAttack = knightAttacks[square];
-    if(knightAttack & bitboards[knight]) return true;
-
-
-    // bishop attack
-    U64 bishopAttack = g_magic.getBishopAttack(square, occupancies[BOTH]);
-    if(bishopAttack & bitboards[bishop]) return true;
-
-
-    // rook attack
-    U64 rookAttack = g_magic.getRookAttack(square, occupancies[BOTH]);
-    if(rookAttack & bitboards[rook]) return true;
-
-
-    // queen attack
-    if((bishopAttack | rookAttack) & bitboards[queen]) return true;
-
-
-    return false;
 }
 
 

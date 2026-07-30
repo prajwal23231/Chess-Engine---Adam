@@ -49,7 +49,6 @@ void loadOrFail(Board& b, const string& fen, const string& label) {
 }
 
 int main() {
-    Attacks attacks;
 
     // ============================================================
     // 1. STARTING POSITION - classic sanity check (20 legal moves)
@@ -57,9 +56,9 @@ int main() {
     {
         Board board;
         board.setStartingPosition();
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(moveCount == 20, "starting position: expected 20 legal moves, got " + to_string(moveCount));
 
@@ -83,9 +82,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "8/8/3k4/8/3N4/8/8/3K4 w - - 0 1", "isolated knight");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int knightMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WN; });
         int kingMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WK; });
@@ -101,9 +100,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "3k4/8/8/8/8/8/8/N6K w - - 0 1", "corner knight");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int knightMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WN; });
         CHECK(knightMoves == 2, "corner knight (a1): expected 2 moves, got " + to_string(knightMoves));
@@ -117,9 +116,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "en passant setup");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(moveCount == 7, "en passant position: expected 7 total moves, got " + to_string(moveCount));
 
@@ -146,9 +145,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/3pP3/8/8/4K3 b - e3 0 1", "black en passant setup");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         bool foundEp = false;
         for (int i = 0; i < moveCount; i++) {
@@ -170,9 +169,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/4p3/8/4P3/4K3 w - - 0 1", "blocked double push");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         // e2 pawn: single push to e3 legal (empty), double push to e4 blocked by black pawn
         CHECK(hasMoveTo(moves, moveCount, E2, E3), "blocked double push: single push E2->E3 should exist");
@@ -185,9 +184,9 @@ int main() {
         // pawn NOT on starting rank should never get a doublePawnPush even if two squares ahead are empty
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/4P3/8/4K3 w - - 0 1", "pawn not on start rank");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int doublePush = countIf(moves, moveCount, [](const Move& m){ return m.getMoveFlag() == doublePawnPush; });
         CHECK(doublePush == 0, "pawn on e3 (not start rank): expected 0 double pushes, got " + to_string(doublePush));
@@ -200,9 +199,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "r1b1k3/1P6/8/8/8/8/8/4K3 w - - 0 1", "promotion matrix");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int promoCapture = countIf(moves, moveCount, [](const Move& m){ return m.getMoveFlag() == promotion_capture; });
         int promoQuiet   = countIf(moves, moveCount, [](const Move& m){ return m.getMoveFlag() == promotion; });
@@ -238,9 +237,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1", "castling both sides clear");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(hasMove(moves, moveCount, E1, G1, kingSideCastle), "castling: king-side castle move missing");
         CHECK(hasMove(moves, moveCount, E1, C1, queenSideCastle), "castling: queen-side castle move missing");
@@ -255,9 +254,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/R3KB1R w KQ - 0 1", "castling kingside blocked");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(!hasMove(moves, moveCount, E1, G1, kingSideCastle), "castling blocked: king-side castle should NOT be generated (f1 occupied)");
         CHECK(hasMove(moves, moveCount, E1, C1, queenSideCastle), "castling blocked: queen-side castle should still be generated");
@@ -269,9 +268,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/R3K2R w - - 0 1", "castling no rights");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int castleMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMoveFlag() == kingSideCastle || m.getMoveFlag() == queenSideCastle; });
         CHECK(castleMoves == 0, "castling rights absent: expected 0 castle moves, got " + to_string(castleMoves));
@@ -283,9 +282,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/RN2K2R w KQ - 0 1", "castling queenside blocked by knight on b1");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(!hasMove(moves, moveCount, E1, C1, queenSideCastle), "queen-side castle blocked by piece on b1 should not be generated");
         CHECK(hasMove(moves, moveCount, E1, G1, kingSideCastle), "king-side castle should still be available");
@@ -297,13 +296,13 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/3P4/8/3R4/8/3p4/4K3 w - - 0 1", "rook blocked both directions");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(!hasMoveTo(moves, moveCount, D4, D6), "rook: should not capture own piece on d6");
         CHECK(!hasMoveTo(moves, moveCount, D4, D7), "rook: should not see past own blocker on d6");
-        CHECK(hasMoveTo(moves, moveCount, D4, D5), "rook: should be able to move to empty d5");
+        CHECK(!hasMoveTo(moves, moveCount, D4, D5), "rook: moving D4->D5 leaves king in check by d2 pawn");
 
         CHECK(hasMove(moves, moveCount, D4, D2, capture), "rook: should be able to capture enemy pawn on d2");
         CHECK(!hasMoveTo(moves, moveCount, D4, D1), "rook: should not see past enemy blocker on d2");
@@ -315,9 +314,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/3Q4/8/8/4K3 w - - 0 1", "isolated queen open board");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         int queenMoves = countIf(moves, moveCount, [](const Move& m){ return m.getMovedPiece() == WQ; });
         CHECK(queenMoves == 27, "queen on d4 open board: expected 27 moves, got " + to_string(queenMoves));
@@ -329,9 +328,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/4K3 w - - 0 1", "kings only");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(moveCount == 5, "kings-only position: expected 5 moves for lone white king, got " + to_string(moveCount));
     }
@@ -342,9 +341,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/8/8/8/8/4K3 b - - 0 1", "black to move kings only");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         CHECK(moveCount == 5, "black to move: expected 5 moves for lone black king, got " + to_string(moveCount));
         for (int i = 0; i < moveCount; i++) {
@@ -359,9 +358,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "r1b1k3/1P6/8/8/8/8/8/4K3 w - - 0 1", "known-issue promo capture check");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         const Move* promoCap = nullptr;
         for (int i = 0; i < moveCount; i++) {
@@ -376,9 +375,9 @@ int main() {
     {
         Board board;
         loadOrFail(board, "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", "known-issue en passant check");
-        MoveGenerator gen(board, attacks);
+        MoveGenerator gen(board);
         Move moves[MAX_MOVES];
-        int moveCount = gen.generateMoves(moves);
+        int moveCount = gen.generateLegalMoves(moves);
 
         const Move* ep = nullptr;
         for (int i = 0; i < moveCount; i++) {

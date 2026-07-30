@@ -15,15 +15,33 @@ U64 Perft::run(int depth){
     if(depth == 0) return 1;
 
     Move moves[MAX_MOVES];
+    int count = moveGen.generatePseudoMoves(moves);
+
+    if(depth == 1) return count;
 
     U64 nodes = 0;
-    int legal = moveGen.generateLegalMoves(moves);
+    Color toMove = board.getMovingSide();
+    Color opp = (toMove == WHITE ? BLACK : WHITE);
 
-    if(depth == 1) return legal;
+    for (int i = 0; i < count; i++) {
+        if (moves[i].isCastle()) {
+            MoveFlag f = moves[i].getMoveFlag();
+            Piece moved = moves[i].getMovedPiece();
+            Square kSq = (moved == WK ? E1 : E8);
+            if (board.isSquareAttacked(kSq, opp)) continue;
+            Square passSq = (f == kingSideCastle) ? (moved == WK ? F1 : F8) : (moved == WK ? D1 : D8);
+            if (board.isSquareAttacked(passSq, opp)) continue;
+        }
 
-    for(int i=0; i<legal; i++){
         board.makeMove(moves[i]);
-        nodes += run(depth-1);
+
+        U64 kingbb = board.getBitboard((toMove == WHITE) ? WK : BK);
+        Square kingPos = static_cast<Square>(Bitboard::lsb(kingbb));
+
+        if (!board.isSquareAttacked(kingPos, opp)) {
+            nodes += run(depth - 1);
+        }
+
         board.undoMove(moves[i]);
     }
 

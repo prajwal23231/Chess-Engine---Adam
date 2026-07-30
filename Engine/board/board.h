@@ -30,7 +30,7 @@ public:
     bool makeMove(const Move &move);
     void undoMove(const Move &move);
 
-    bool isSquareAttacked(Square square) const;
+    inline bool isSquareAttacked(Square square, Color bySide) const;
 
     U64 getZobristKey() const;
 
@@ -68,3 +68,30 @@ private:
     void initKnightAttacks();
     void initKingAttacks();
 };
+
+
+inline bool Board::isSquareAttacked(Square square, Color bySide) const{
+
+    Piece pawn   = (bySide == WHITE ? WP : BP);
+    Piece knight = (bySide == WHITE ? WN : BN);
+    Piece bishop = (bySide == WHITE ? WB : BB);
+    Piece rook   = (bySide == WHITE ? WR : BR);
+    Piece queen  = (bySide == WHITE ? WQ : BQ);
+    Piece king   = (bySide == WHITE ? WK : BK);
+    Color opp = (bySide == WHITE ? BLACK : WHITE);
+
+    if(pawnAttacks[opp][square] & bitboards[pawn]) return true;
+    
+    if(kingAttacks[square] & bitboards[king]) return true;
+
+    if(knightAttacks[square] & bitboards[knight]) return true;
+
+    if(g_magic.getBishopAttack(square, occupancies[BOTH]) & bitboards[bishop]) return true;
+
+    if(g_magic.getRookAttack(square, occupancies[BOTH]) & bitboards[rook]) return true;
+
+    if((g_magic.getBishopAttack(square, occupancies[BOTH]) | g_magic.getRookAttack(square, occupancies[BOTH])) 
+        & bitboards[queen]) return true;
+
+    return false;
+}
