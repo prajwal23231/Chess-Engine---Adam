@@ -20,11 +20,20 @@ public:
     friend class MagicGen;
     Magic();
 
-    U64 getBishopAttack(Square square, U64 occuppancy) const;
-    U64 getRookAttack(Square square, U64 occuppancy) const;
+    inline U64 getBishopAttack(Square square, U64 occ) const {
+        occ &= bishopMagic[square].mask;
+        size_t hash = (occ * bishopMagic[square].magic) >> bishopMagic[square].shift;
+        return bishopMagic[square].attacks[hash];
+    }
 
-    U64 getBishopMask(Square s) const;
-    U64 getRookMask(Square s) const;
+    inline U64 getRookAttack(Square square, U64 occ) const {
+        occ &= rookMagic[square].mask;
+        size_t hash = (occ * rookMagic[square].magic) >> rookMagic[square].shift;
+        return rookMagic[square].attacks[hash];
+    }
+
+    inline U64 getBishopMask(Square s) const { return bishopMagic[s].mask; }
+    inline U64 getRookMask(Square s) const { return rookMagic[s].mask; }
 
 private:
     std::array<MagicEntry, BOARD_SIZE> bishopMagic;

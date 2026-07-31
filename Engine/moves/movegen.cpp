@@ -82,158 +82,96 @@ void MoveGenerator::computeBetween(){
 }
 
 
-void MoveGenerator::createAttackMap(){
+void MoveGenerator::computeAttackMapAndChecks(CheckInfo& info){
     enemyAttackMap = 0;
-
     U64 occWithoutKing = occ ^ (1ULL << kingpos);
+    Square sq = kingpos;
 
     // king attack
     U64 kBb = board.getBitboard(tomove == WHITE ? BK : WK);
-    Square king = static_cast<Square>(popLSB(kBb));
-
-    enemyAttackMap |= attacks.getKingAttack(king);
-
+    Square enemyKing = static_cast<Square>(popLSB(kBb));
+    enemyAttackMap |= attacks.getKingAttack(enemyKing);
 
     // knight attack
     U64 nBb = board.getBitboard(tomove == WHITE ? BN : WN);
-    
-    while(nBb){
-        Square knight = static_cast<Square>(popLSB(nBb));
-        enemyAttackMap |= attacks.getKnightAttack(knight);
-    }
-
-
-    // pawn attack
-    U64 pBb = board.getBitboard(tomove == WHITE ? BP : WP);
-    
-    while(pBb){
-        Square pawn = static_cast<Square>(popLSB(pBb));
-
-        if(tomove == WHITE) enemyAttackMap |= attacks.getBlackPawnAttack(pawn);
-        else enemyAttackMap |= attacks.getWhitePawnAttack(pawn);
-    }
-
-
-
-    // bishop attack
-    U64 bBb = board.getBitboard(tomove == WHITE ? BB : WB);
-    
-    while(bBb){
-        Square bishop = static_cast<Square>(popLSB(bBb));
-        enemyAttackMap |= attacks.getBishopAttack(bishop, occWithoutKing);
-    }
-
-
-
-    // rook attack
-    U64 rBb = board.getBitboard(tomove == WHITE ? BR : WR);
-    
-    while(rBb){
-        Square rook = static_cast<Square>(popLSB(rBb));
-        enemyAttackMap |= attacks.getRookAttack(rook, occWithoutKing);
-    }
-
-
-
-    // queen attack
-    U64 qBb = board.getBitboard(tomove == WHITE ? BQ : WQ);
-    
-    while(qBb){
-        Square queen = static_cast<Square>(popLSB(qBb));
-        enemyAttackMap |= attacks.getQueenAttack(queen, occWithoutKing);
-    }
-}
-
-
-void MoveGenerator::analyzeChecks(CheckInfo& info) const{
-    computeChecks(info);
-    if(info.checkerCount < 2) computePins(info);
-}
-
-
-void MoveGenerator::computeChecks(CheckInfo& info) const{
-    Square sq = kingpos;
-
-
-    // knight attack
-    U64 nBb = board.getBitboard(tomove == WHITE ? BN : WN);
-    
     while(nBb){
         Square knight = static_cast<Square>(popLSB(nBb));
         U64 attack = attacks.getKnightAttack(knight);
+        enemyAttackMap |= attack;
 
-        if(attack & (1ULL<<sq)){
-            info.checkMask |= (1ULL<<knight);
+        if(attack & (1ULL << sq)){
+            info.checkMask |= (1ULL << knight);
             info.checkerCount++;
-            info.checkers |= (1ULL<<knight);
+            info.checkers |= (1ULL << knight);
         }
     }
-
 
     // pawn attack
     U64 pBb = board.getBitboard(tomove == WHITE ? BP : WP);
-    
     while(pBb){
         Square pawn = static_cast<Square>(popLSB(pBb));
-        U64 attack = 0;
+        U64 attack = (tomove == WHITE) ? attacks.getBlackPawnAttack(pawn) : attacks.getWhitePawnAttack(pawn);
+        enemyAttackMap |= attack;
 
-        if(tomove == WHITE) attack = attacks.getBlackPawnAttack(pawn);
-        else attack = attacks.getWhitePawnAttack(pawn);
-
-        if(attack & (1ULL<<sq)){
-            info.checkMask |= (1ULL<<pawn);
+        if(attack & (1ULL << sq)){
+            info.checkMask |= (1ULL << pawn);
             info.checkerCount++;
-            info.checkers |= (1ULL<<pawn);
+            info.checkers |= (1ULL << pawn);
         }
     }
-
-
 
     // bishop attack
     U64 bBb = board.getBitboard(tomove == WHITE ? BB : WB);
-    
     while(bBb){
         Square bishop = static_cast<Square>(popLSB(bBb));
-        U64 attack = attacks.getBishopAttack(bishop, occ);
+        U64 attackWK = attacks.getBishopAttack(bishop, occWithoutKing);
+        enemyAttackMap |= attackWK;
 
-        if(attack & (1ULL<<sq)){
-            info.checkMask |= (attack & between[bishop][sq]) | (1ULL<<bishop);
+        if(attackWK & (1ULL << sq)){
+            U64 attack = attacks.getBishopAttack(bishop, occ);
+            info.checkMask |= (attack & between[bishop][sq]) | (1ULL << bishop);
             info.checkerCount++;
-            info.checkers |= (1ULL<<bishop);
+            info.checkers |= (1ULL << bishop);
         }
     }
-
-
 
     // rook attack
     U64 rBb = board.getBitboard(tomove == WHITE ? BR : WR);
-    
     while(rBb){
         Square rook = static_cast<Square>(popLSB(rBb));
-        U64 attack = attacks.getRookAttack(rook, occ);
+        U64 attackWK = attacks.getRookAttack(rook, occWithoutKing);
+        enemyAttackMap |= attackWK;
 
-        if(attack & (1ULL<<sq)){
-            info.checkMask |= (attack & between[rook][sq]) | (1ULL<<rook);
+        if(attackWK & (1ULL << sq)){
+            U64 attack = attacks.getRookAttack(rook, occ);
+            info.checkMask |= (attack & between[rook][sq]) | (1ULL << rook);
             info.checkerCount++;
-            info.checkers |= (1ULL<<rook);
+            info.checkers |= (1ULL << rook);
         }
     }
-
-
 
     // queen attack
     U64 qBb = board.getBitboard(tomove == WHITE ? BQ : WQ);
-    
     while(qBb){
         Square queen = static_cast<Square>(popLSB(qBb));
-        U64 attack = attacks.getQueenAttack(queen, occ);
+        U64 bAttackWK = attacks.getBishopAttack(queen, occWithoutKing);
+        U64 rAttackWK = attacks.getRookAttack(queen, occWithoutKing);
+        U64 attackWK = bAttackWK | rAttackWK;
+        enemyAttackMap |= attackWK;
 
-        if(attack & (1ULL<<sq)){
-            info.checkMask |= (attack & between[queen][sq]) | (1ULL<<queen);
+        if(attackWK & (1ULL << sq)){
+            U64 attack = attacks.getQueenAttack(queen, occ);
+            info.checkMask |= (attack & between[queen][sq]) | (1ULL << queen);
             info.checkerCount++;
-            info.checkers |= (1ULL<<queen);
+            info.checkers |= (1ULL << queen);
         }
     }
+}
+
+
+void MoveGenerator::analyzeChecks(CheckInfo& info){
+    computeAttackMapAndChecks(info);
+    if(info.checkerCount < 2) computePins(info);
 }
 
 
@@ -313,8 +251,7 @@ int MoveGenerator::generateLegalMoves(Move moves[]){
     U64 pos = board.getBitboard(p);
     kingpos = static_cast<Square>(popLSB(pos));
 
-    createAttackMap();
-    CheckInfo info = {};
+    CheckInfo info;
     analyzeChecks(info);
     cnt = 0;
 

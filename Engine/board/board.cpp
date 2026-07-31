@@ -423,13 +423,11 @@ bool Board::makeMove(const Move &move){
 
         if(sideToMove == WHITE){
             if(flag == kingSideCastle){
-                castlingRights &= (~CASTLE_WK);
                 source = H1;
                 dest = F1;
             }
 
             else{
-                castlingRights &= (~CASTLE_WQ);
                 source = A1;
                 dest = D1;
             }
@@ -439,13 +437,11 @@ bool Board::makeMove(const Move &move){
 
         else{
             if(flag == kingSideCastle){
-                castlingRights &= (~CASTLE_BK);
                 source = H8;
                 dest = F8;
             }
 
             else{
-                castlingRights &= (~CASTLE_BQ);
                 source = A8;
                 dest = D8;
             }

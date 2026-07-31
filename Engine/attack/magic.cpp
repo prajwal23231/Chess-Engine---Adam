@@ -206,30 +206,7 @@ void Magic::buildRookTable(){
 }
 
 
-U64 Magic::getBishopAttack(Square square, U64 occ) const{
-    occ &= bishopMagic[square].mask;
 
-    size_t hash = (occ * bishopMagic[square].magic) >> bishopMagic[square].shift;
-    return bishopMagic[square].attacks[hash];
-}
-
-
-U64 Magic::getRookAttack(Square square, U64 occ) const{
-    occ &= rookMagic[square].mask;
-
-    size_t hash = (occ * rookMagic[square].magic) >> rookMagic[square].shift;
-    return rookMagic[square].attacks[hash];
-}
-
-
-U64 Magic::getBishopMask(Square s) const{
-    return bishopMagic[s].mask;
-}
-
-
-U64 Magic::getRookMask(Square s) const{
-    return rookMagic[s].mask;
-}
 
 
 void Magic::validate() const{

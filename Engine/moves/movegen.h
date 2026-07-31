@@ -9,9 +9,9 @@
 struct CheckInfo{
     U64 checkers = 0;
     U64 checkMask = 0;
-    U64 pinnedRay[BOARD_SIZE] = {};
     U64 pinnedPieces = 0;
     int checkerCount = 0;
+    U64 pinnedRay[BOARD_SIZE];
 };
 
 
@@ -38,10 +38,9 @@ private:
 
 
     // layer 1
-    void createAttackMap();
-    void analyzeChecks(CheckInfo &info)const;
+    void computeAttackMapAndChecks(CheckInfo &info);
+    void analyzeChecks(CheckInfo &info);
     void computePins(CheckInfo &info) const;
-    void computeChecks(CheckInfo &info) const;
     void computeOrthogonalPins(CheckInfo &info) const;
     void computeDiagonalPins(CheckInfo &info) const;
 

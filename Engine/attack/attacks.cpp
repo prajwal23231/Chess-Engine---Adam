@@ -92,31 +92,4 @@ Attacks::Attacks(){
         }
     }
 }
-
-U64 Attacks::getKnightAttack(Square square) const{
-    return knightAttack[square];
-}
-
-U64 Attacks::getKingAttack(Square square) const{
-    return kingAttack[square];
-}
-
-U64 Attacks::getWhitePawnAttack(Square square) const{
-    return whitePawnAttack[square];
-}
-
-U64 Attacks::getBlackPawnAttack(Square square) const{
-    return blackPawnAttack[square];
-}
-
-U64 Attacks::getBishopAttack(Square square, U64 occupancy) const{
-    return g_magic.getBishopAttack(square, occupancy);
-}
-
-U64 Attacks::getRookAttack(Square square, U64 occupancy) const{
-    return g_magic.getRookAttack(square, occupancy);
-}
-
-U64 Attacks::getQueenAttack(Square square, U64 occupancy) const{
-    return getBishopAttack(square, occupancy) | getRookAttack(square, occupancy);
-}
+
