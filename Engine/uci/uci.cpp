@@ -5,27 +5,83 @@
 using namespace std;
 
 
-constexpr Piece getPiece(char c, Color side) {
-    switch (c) {
-        case 'q': return (side == WHITE) ? WQ : BQ;
-        case 'r': return (side == WHITE) ? WR : BR;
-        case 'b': return (side == WHITE) ? WB : BB;
-        case 'n': return (side == WHITE) ? WN : BN;
-        default:  return EMPTY;
+UCI::UCI(Board& board, MoveGenerator& movegen) : movegen(movegen), board(board), perft(board,movegen){
+}
+
+
+void UCI::parseCommand(const string& command){
+    istringstream iss(command);
+
+    string cmd;
+    iss>>cmd;
+
+    if(cmd=="uci"){
+        handleUCI();
+    }
+
+    else if(cmd=="isready"){
+        handleIsReady();
+    }
+
+    else if(cmd=="quit"){
+        handleQuit();
+    }
+
+    else if(cmd=="ucinewgame"){
+        newgame();
+    }
+
+    else if(cmd=="position"){
+        handlePosition(iss);
+    }
+
+    else if(cmd=="perft"){
+        handlePerft(iss);
+    }
+
+    else if(cmd=="move"){
+        if(playMoves(iss)) board.print();
+
+        else{
+            cout<<"Invalid move\n";
+        }
+    }
+
+    else if(cmd=="divide"){
+        handleDivide(iss);
+    }
+
+    else{
+        cout<<"Unknown Command : "<<cmd<<"\n";
     }
 }
 
 
-void UCI::playMoves(istringstream &iss){
+
+bool UCI::playMoves(istringstream &iss){
     string pos;
-    ParsedMove move;
+    Move moves[MAX_MOVES];
     
     while(iss>>pos){
-        if(parseUCIMove(pos, move) == false){
-            cout<<"Invalid move";
-            return ;
+        ParsedMove move;
+        if(!parseUCIMove(pos, move)) return false;
+
+        int legal = movegen.generateLegalMoves(moves);
+        bool found = false;
+
+        for(int i=0; i<legal; i++){
+            if(moves[i].getFrom() == move.from && moves[i].getTo() == move.to
+            && moves[i].getPromotion() == move.promotion){
+                board.makeMove(moves[i]);
+                found = true;
+                break;
+            }
         }
+
+        if(!found) return false;
     }
+
+    return true;
 }
 
 
@@ -60,40 +116,6 @@ void UCI::loop() {
     }
 }
 
-void UCI::parseCommand(const string& command){
-    istringstream iss(command);
-
-    string cmd;
-    iss>>cmd;
-
-    if(cmd=="uci"){
-        handleUCI();
-    }
-
-    else if(cmd=="isready"){
-        handleIsReady();
-    }
-
-    else if(cmd=="quit"){
-        handleQuit();
-    }
-
-    else if(cmd=="ucinewgame"){
-        newgame();
-    }
-
-    else if(cmd=="position"){
-        handlePosition(iss);
-    }
-
-    else if(cmd=="perft"){
-        handlePerft(iss);
-    }
-
-    else{
-        cout<<"Unknon Command : "<<cmd<<"\n";
-    }
-}
 
 void UCI::handleUCI(){
     cout<<"id name ADAM\n";
@@ -112,6 +134,7 @@ void UCI::handleQuit(){
 void UCI::newgame(){
     board.setStartingPosition();
 }
+
 
 void UCI::handlePosition(istringstream &iss){
     string token;
@@ -135,6 +158,7 @@ void UCI::handlePosition(istringstream &iss){
 
         if(!board.loadFEN(fen)){
             cout<<"Unknown position Command\n";
+            return ;
         }
     }
 
@@ -146,14 +170,21 @@ void UCI::handlePosition(istringstream &iss){
     // parsing moves
     string word;
 
-    if(iss >> word){
-        if(word != "moves"){
-            cout<<"Invalid move Command";
+    if(iss>>word){
+        if(word == "moves"){
+            if(!playMoves(iss)){
+                cout<<"Invalid move\n";
+                return ;
+            }
+        }
+
+        else{
+            cout<<"Invalid command\n";
             return ;
         }
-        
-        playMoves(iss);
     }
+
+    board.print();
 }
 
 
@@ -172,12 +203,24 @@ void UCI::handlePerft(istringstream &iss){
         return;
     }
 
-    MoveGenerator moveGen(board);
-
-    Move moves[MAX_MOVES];
-    moveGen.generateLegalMoves(moves);
-
-    Perft perft(board, moveGen);
-    
     perft.benchmark(depth);
+}
+
+
+void UCI::handleDivide(istringstream& iss){
+    int depth;
+    
+    if (!(iss >> depth)) {
+        std::cout << "Invalid perft depth\n";
+        return;
+    }
+
+    string word;
+
+    if ((iss >> word)) {
+        std::cout << "Invalid perft command\n";
+        return;
+    }
+
+    perft.divide(depth);
 }

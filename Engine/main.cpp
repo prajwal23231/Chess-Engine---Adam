@@ -11,6 +11,8 @@ int main() {
     Zobrist::init();
 
     Board board;
-    UCI uci;
+    MoveGenerator movegen(board);
+
+    UCI uci(board, movegen);
     uci.loop();
 }
