@@ -27,17 +27,19 @@ public:
 private:
     Board& board;
 
-    U64 between[BOARD_SIZE][BOARD_SIZE];
+    inline static U64 between[BOARD_SIZE][BOARD_SIZE];
+    inline static bool isBetweenInitialized = false;
+
     int cnt;
     U64 enemyAttackMap;
     U64 occ, friendlyocc;
     Color tomove;
+    Square kingpos;
 
 
     // layer 1
-    Square getKingpos() const;
     void createAttackMap();
-    CheckInfo analyzeChecks() const;
+    void analyzeChecks(CheckInfo &info)const;
     void computePins(CheckInfo &info) const;
     void computeChecks(CheckInfo &info) const;
     void computeOrthogonalPins(CheckInfo &info) const;

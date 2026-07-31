@@ -1,19 +1,38 @@
 #pragma once
 #include "type.h"
 
-namespace Bitboard{
+namespace Bitboard {
 
-    // Basic operations
-    bool getBit(U64 bb, Square square);
-    void setBit(U64& bb, Square square);
-    void clearBit(U64& bb, Square square);
+    // Basic bit operations (Inlined for zero function-call overhead)
+    inline bool getBit(U64 bb, Square square) {
+        return (bb & (1ULL << square)) != 0;
+    }
 
+    inline void setBit(U64& bb, Square square) {
+        bb |= (1ULL << square);
+    }
 
-    // Bit manipulation helpers
-    int popCount(U64 bb);
-    int lsb(U64 bb);
-    int popLSB(U64& bb);
+    inline void clearBit(U64& bb, Square square) {
+        bb &= ~(1ULL << square);
+    }
 
-    // Debugging
+    // Bit manipulation helpers (Inlined using compiler intrinsics)
+    inline int popCount(U64 bb) {
+        return __builtin_popcountll(bb);
+    }
+
+    inline int lsb(U64 bb) {
+        return bb ? __builtin_ctzll(bb) : -1;
+    }
+
+    inline int popLSB(U64& bb) {
+        int pos = lsb(bb);
+        if (pos == -1) return -1;
+
+        bb &= (bb - 1);
+        return pos;
+    }
+
+    // Debugging (Keep out-of-line in .cpp)
     void printBitboard(U64 bb);
 }

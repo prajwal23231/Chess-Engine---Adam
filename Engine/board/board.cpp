@@ -7,6 +7,17 @@ using namespace std;
 
 namespace {
     constexpr char START_FEN[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    constexpr int castlingRightsMask[BOARD_SIZE] = {
+        13, 15, 15, 15, 12, 15, 15, 14,
+        15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15,
+        15, 15, 15, 15, 15, 15, 15, 15,
+         7, 15, 15, 15,  3, 15, 15, 11
+    };
 }
 
 Board::Board(){
@@ -316,37 +327,7 @@ void Board::print() const{
 }
 
 
-Color Board::getMovingSide() const{
-    return sideToMove;
-}
 
-Square Board::getEnPassant() const{
-    return enPassant;
-}
-
-U64 Board::getBitboard(Piece p) const{
-    return bitboards[p];
-}
-
-U64 Board::getOccupancy(Color c) const{
-    return occupancies[c];
-}
-
-Piece Board::getPieceBoard(Square s) const{
-    return board[s];
-}
-
-int Board::getCastlingRights() const{
-    return castlingRights;
-}
-
-int Board::getHalfMoveClock() const{
-    return halfmoveClock;
-}
-
-int Board::getFullMoveNumber() const{
-    return fullmoveNumber;
-}
 
 
 bool Board::makeMove(const Move &move){
@@ -487,60 +468,8 @@ bool Board::makeMove(const Move &move){
 
 
 
-    // removing castling rights
-    if(moved == WK){
-        if(castlingRights & (CASTLE_WK | CASTLE_WQ)){
-            castlingRights &= ~(CASTLE_WK | CASTLE_WQ);
-        }
-    }
-
-    else if(moved == BK){
-        if(castlingRights & (CASTLE_BK | CASTLE_BQ)){
-            castlingRights &= ~(CASTLE_BK | CASTLE_BQ);
-        }
-    }
-
-    if(moved == WR){
-        if(from == A1){
-            castlingRights &= ~CASTLE_WQ;
-        }
-
-        else if(from == H1){
-            castlingRights &= ~CASTLE_WK;
-        }
-    }
-
-
-    else if(moved == BR){
-        if(from == A8){
-            castlingRights &= ~CASTLE_BQ;
-        }
-
-        else if(from == H8){
-            castlingRights &= ~CASTLE_BK;
-        }
-    }
-
-
-    if(captured == BR){
-        if(to == A8){
-            castlingRights &= ~CASTLE_BQ;
-        }
-
-        else if(to == H8){
-            castlingRights &= ~CASTLE_BK;
-        }
-    }
-
-    else if(captured == WR){
-        if(to == A1){
-            castlingRights &= ~CASTLE_WQ;
-        }
-
-        else if(to == H1){
-            castlingRights &= ~CASTLE_WK;
-        }
-    }
+    // removing castling rights branchlessly
+    castlingRights &= castlingRightsMask[from] & castlingRightsMask[to];
 
     // adding new castling rights
     zobristKey ^= Zobrist::getCastleKeys(castlingRights);
@@ -759,7 +688,4 @@ void Board::initKnightAttacks(){
     }
 }
 
-
-U64 Board::getZobristKey() const{
-    return zobristKey;
-}
+

@@ -15,37 +15,30 @@ U64 Perft::run(int depth){
     if(depth == 0) return 1;
 
     Move moves[MAX_MOVES];
-    int count = moveGen.generatePseudoMoves(moves);
+    int count = moveGen.generateLegalMoves(moves);
 
     if(depth == 1) return count;
 
     U64 nodes = 0;
-    Color toMove = board.getMovingSide();
-    Color opp = (toMove == WHITE ? BLACK : WHITE);
 
     for (int i = 0; i < count; i++) {
-        if (moves[i].isCastle()) {
-            MoveFlag f = moves[i].getMoveFlag();
-            Piece moved = moves[i].getMovedPiece();
-            Square kSq = (moved == WK ? E1 : E8);
-            if (board.isSquareAttacked(kSq, opp)) continue;
-            Square passSq = (f == kingSideCastle) ? (moved == WK ? F1 : F8) : (moved == WK ? D1 : D8);
-            if (board.isSquareAttacked(passSq, opp)) continue;
-        }
-
         board.makeMove(moves[i]);
-
-        U64 kingbb = board.getBitboard((toMove == WHITE) ? WK : BK);
-        Square kingPos = static_cast<Square>(Bitboard::lsb(kingbb));
-
-        if (!board.isSquareAttacked(kingPos, opp)) {
-            nodes += run(depth - 1);
-        }
-
+        nodes += run(depth - 1);
         board.undoMove(moves[i]);
     }
 
     return nodes;
+}
+
+
+char pieceToChar(Piece p){
+    switch(p){
+        case WN: case BN: return 'n';
+        case WB: case BB: return 'b';
+        case WR: case BR: return 'r';
+        case WQ: case BQ: return 'q';
+        default: return '?';
+    }
 }
 
 
@@ -60,13 +53,18 @@ void Perft::divide(int depth){
     for(int i=0; i<legal; i++){
         Square from = moves[i].getFrom();
         Square to = moves[i].getTo();
+        Piece prom = moves[i].getPromotion();
 
         board.makeMove(moves[i]);
         U64 cnt = run(depth-1);
         
         ways+=cnt;
 
-        cout << squareToStr[from] << squareToStr[to] << " : " << cnt << "\n";
+        cout << squareToStr[from] << squareToStr[to] ;
+
+        if(prom != EMPTY) cout << pieceToChar(prom);
+        
+        cout << " : " << cnt << "\n";
 
         board.undoMove(moves[i]);
     }

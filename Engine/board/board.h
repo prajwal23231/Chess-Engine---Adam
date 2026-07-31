@@ -17,22 +17,23 @@ public:
     void setStartingPosition();
     void print() const;
     bool loadFEN(const std::string &fen);
-    Color getMovingSide() const;
-    Square getEnPassant() const;
-    U64 getBitboard(Piece p) const;
-    U64 getOccupancy(Color c) const;
-    Piece getPieceBoard(Square s) const;
-    int getCastlingRights() const;
+    inline Color getMovingSide() const { return sideToMove; }
+    inline Square getEnPassant() const { return enPassant; }
+    inline U64 getBitboard(Piece p) const { return bitboards[p]; }
+    inline U64 getOccupancy(Color c) const { return occupancies[c]; }
+    inline Piece getPieceBoard(Square s) const { return board[s]; }
+    inline int getCastlingRights() const { return castlingRights; }
 
-    int getHalfMoveClock() const;
-    int getFullMoveNumber() const;
+    inline int getHalfMoveClock() const { return halfmoveClock; }
+    inline int getFullMoveNumber() const { return fullmoveNumber; }
+    inline Square getKingSquare(Color c) const { return kingSquare[c]; }
 
     bool makeMove(const Move &move);
     void undoMove(const Move &move);
 
     inline bool isSquareAttacked(Square square, Color bySide) const;
 
-    U64 getZobristKey() const;
+    inline U64 getZobristKey() const { return zobristKey; }
 
 private:
     std::array<U64, NUM_PIECES> bitboards;
@@ -43,6 +44,7 @@ private:
     int castlingRights;
 
     Square enPassant;
+    std::array<Square, 2> kingSquare = {E1, E8};
 
     int halfmoveClock;
     int fullmoveNumber;

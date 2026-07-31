@@ -48,19 +48,57 @@ public:
         MoveFlag flag
     );
 
-    Square getFrom() const;
-    Square getTo() const;
-    Piece getPromotion() const;
-    MoveFlag getMoveFlag() const;
-    Piece getMovedPiece() const;
-    Piece getCapturedPiece() const;
-    U32 getValue() const;
+    inline Square getFrom() const {
+        return static_cast<Square>(move & SquareMask);
+    }
+
+    inline Square getTo() const {
+        return static_cast<Square>((move >> toShift) & SquareMask);
+    }
+
+    inline Piece getPromotion() const {
+        int promotion = (move >> promoteShift) & pieceMask;
+        return static_cast<Piece>(promotion - PIECE_OFFSET);
+    }
+
+    inline MoveFlag getMoveFlag() const {
+        return static_cast<MoveFlag>((move >> flagShift) & flagMask);
+    }
+
+    inline Piece getMovedPiece() const {
+        int moved = (move >> movedPieceShift) & pieceMask;
+        return static_cast<Piece>(moved - PIECE_OFFSET);
+    }
+
+    inline Piece getCapturedPiece() const {
+        int captured = (move >> capturedPieceShift) & pieceMask;
+        return static_cast<Piece>(captured - PIECE_OFFSET);
+    }
+
+    inline U32 getValue() const {
+        return move;
+    }
 
     // helper functions
-    bool isCapture() const;
-    bool isPromotion() const;
-    bool isCastle() const;
-    bool isEnPassant() const;
+    inline bool isCapture() const {
+        U32 flag = (move >> flagShift) & flagMask;
+        return flag == capture || flag == promotion_capture || flag == enPassant;
+    }
+
+    inline bool isPromotion() const {
+        U32 flag = (move >> flagShift) & flagMask;
+        return flag == promotion || flag == promotion_capture;
+    }
+
+    inline bool isCastle() const {
+        U32 moveFlag = (move >> flagShift) & flagMask;
+        return (moveFlag == kingSideCastle || moveFlag == queenSideCastle);
+    }
+
+    inline bool isEnPassant() const {
+        U32 moveFlag = (move >> flagShift) & flagMask;
+        return moveFlag == enPassant;
+    }
 
 private:
     U32 move;

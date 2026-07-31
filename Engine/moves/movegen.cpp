@@ -9,7 +9,10 @@ using namespace Bitboard;
 MoveGenerator::MoveGenerator(Board &board) : board(board){
     cnt = 0;
 
-    computeBetween();
+    if (!isBetweenInitialized) {
+        computeBetween();
+        isBetweenInitialized = true;
+    }
 }
 
 
@@ -79,16 +82,10 @@ void MoveGenerator::computeBetween(){
 }
 
 
-Square MoveGenerator::getKingpos() const{
-    Piece p = (tomove == WHITE ? WK : BK);
-    U64 pos = board.getBitboard(p);
-    return static_cast<Square>(popLSB(pos));
-}
-
-
 void MoveGenerator::createAttackMap(){
     enemyAttackMap = 0;
 
+    U64 occWithoutKing = occ ^ (1ULL << kingpos);
 
     // king attack
     U64 kBb = board.getBitboard(tomove == WHITE ? BK : WK);
@@ -123,7 +120,7 @@ void MoveGenerator::createAttackMap(){
     
     while(bBb){
         Square bishop = static_cast<Square>(popLSB(bBb));
-        enemyAttackMap |= attacks.getBishopAttack(bishop, occ);
+        enemyAttackMap |= attacks.getBishopAttack(bishop, occWithoutKing);
     }
 
 
@@ -133,7 +130,7 @@ void MoveGenerator::createAttackMap(){
     
     while(rBb){
         Square rook = static_cast<Square>(popLSB(rBb));
-        enemyAttackMap |= attacks.getRookAttack(rook, occ);
+        enemyAttackMap |= attacks.getRookAttack(rook, occWithoutKing);
     }
 
 
@@ -143,23 +140,19 @@ void MoveGenerator::createAttackMap(){
     
     while(qBb){
         Square queen = static_cast<Square>(popLSB(qBb));
-        enemyAttackMap |= attacks.getQueenAttack(queen, occ);
+        enemyAttackMap |= attacks.getQueenAttack(queen, occWithoutKing);
     }
 }
 
 
-CheckInfo MoveGenerator::analyzeChecks() const{
-    CheckInfo info = {};
-
+void MoveGenerator::analyzeChecks(CheckInfo& info) const{
     computeChecks(info);
     if(info.checkerCount < 2) computePins(info);
-
-    return info;
 }
 
 
 void MoveGenerator::computeChecks(CheckInfo& info) const{
-    Square sq = getKingpos();
+    Square sq = kingpos;
 
 
     // knight attack
@@ -256,21 +249,19 @@ void MoveGenerator::computeDiagonalPins(CheckInfo& info) const{
 
     Piece queen = (tomove == WHITE ? BQ : WQ);
     Piece bishop = (tomove == WHITE ? BB : WB);
-
-    Square kingsq = getKingpos();
     
-    U64 bishopray = attacks.getBishopAttack(kingsq, occ);
+    U64 bishopray = attacks.getBishopAttack(kingpos, occ);
     U64 blockers = bishopray & friendlyocc;
 
     if(blockers == 0) return ;
 
-    U64 complete = attacks.getBishopAttack(kingsq, occ^blockers);
+    U64 complete = attacks.getBishopAttack(kingpos, occ^blockers);
     U64 pinners = complete & (board.getBitboard(queen) | board.getBitboard(bishop));
 
     while(pinners){
         Square pinner = static_cast<Square>(popLSB(pinners));
 
-        U64 betweenMask = between[kingsq][pinner];
+        U64 betweenMask = between[kingpos][pinner];
         U64 blockers = betweenMask & friendlyocc;
 
         if(popCount(blockers) == 1){
@@ -287,22 +278,19 @@ void MoveGenerator::computeOrthogonalPins(CheckInfo& info) const{
 
     Piece queen = (tomove == WHITE ? BQ : WQ);
     Piece rook = (tomove == WHITE ? BR : WR);
-
-    Square kingsq = getKingpos();
-    U64 friendlyocc = friendlyocc;
     
-    U64 rookray = attacks.getRookAttack(kingsq, occ);
+    U64 rookray = attacks.getRookAttack(kingpos, occ);
     U64 blockers = rookray & friendlyocc;
 
     if(blockers == 0) return ;
 
-    U64 complete = attacks.getRookAttack(kingsq, occ^blockers);
+    U64 complete = attacks.getRookAttack(kingpos, occ^blockers);
     U64 pinners = complete & (board.getBitboard(queen) | board.getBitboard(rook));
 
     while(pinners){
         Square pinner = static_cast<Square>(popLSB(pinners));
 
-        U64 betweenMask = between[kingsq][pinner];
+        U64 betweenMask = between[kingpos][pinner];
         U64 blockers = betweenMask & friendlyocc;
 
         if(popCount(blockers) == 1){
@@ -321,8 +309,13 @@ int MoveGenerator::generateLegalMoves(Move moves[]){
     occ = board.getOccupancy(BOTH);
     friendlyocc = board.getOccupancy(tomove);
 
+    Piece p = (tomove == WHITE ? WK : BK);
+    U64 pos = board.getBitboard(p);
+    kingpos = static_cast<Square>(popLSB(pos));
+
     createAttackMap();
-    CheckInfo info = analyzeChecks();
+    CheckInfo info = {};
+    analyzeChecks(info);
     cnt = 0;
 
     generateKingMoves(moves, info);
@@ -342,8 +335,8 @@ int MoveGenerator::generateLegalMoves(Move moves[]){
 
 
 void MoveGenerator::generateKingMoves(Move moves[],CheckInfo& info){
-    Square kingSq = getKingpos();
-    U64 kattacks = attacks.getKingAttack(kingSq) & (~friendlyocc);
+    (void)info;
+    U64 kattacks = attacks.getKingAttack(kingpos) & (~friendlyocc);
 
     Piece moved = (tomove == WHITE ? WK : BK);
     Castling kingside = (tomove == WHITE ? CASTLE_WK : CASTLE_BK);
@@ -359,13 +352,13 @@ void MoveGenerator::generateKingMoves(Move moves[],CheckInfo& info){
         Piece captured = board.getPieceBoard(dest);
         MoveFlag f = (captured == EMPTY ? quiet : capture);
 
-        moves[cnt] = {kingSq, dest, moved, captured, EMPTY, f};
+        moves[cnt] = {kingpos, dest, moved, captured, EMPTY, f};
         cnt++;
     }
 
 
     // castle not possible
-    if(enemyAttackMap & (1ULL<<kingSq)) return ;
+    if(enemyAttackMap & (1ULL<<kingpos)) return ;
 
 
     // king side castle
@@ -375,18 +368,14 @@ void MoveGenerator::generateKingMoves(Move moves[],CheckInfo& info){
 
         if(tomove == WHITE){
             if(!(enemyAttackMap & wk_side) && !(occ & wk_side)){
-                moves[cnt] = {kingSq, G1, WK, EMPTY, EMPTY, kingSideCastle};
-                cnt++;
-                moves[cnt] = {H1, F1, WR, EMPTY, EMPTY, kingSideCastle};
+                moves[cnt] = {kingpos, G1, WK, EMPTY, EMPTY, kingSideCastle};
                 cnt++;
             }
         }
         
         else{
             if(!(enemyAttackMap & bk_side) && !(occ & bk_side)){
-                moves[cnt] = {kingSq, G8, BK, EMPTY, EMPTY, kingSideCastle};
-                cnt++;
-                moves[cnt] = {H8, F8, BR, EMPTY, EMPTY, kingSideCastle};
+                moves[cnt] = {kingpos, G8, BK, EMPTY, EMPTY, kingSideCastle};
                 cnt++;
             }
         }
@@ -402,14 +391,14 @@ void MoveGenerator::generateKingMoves(Move moves[],CheckInfo& info){
 
         if(tomove == WHITE){
             if(!(enemyAttackMap & wq_safe) && !(occ & wq_side)){
-                moves[cnt] = {kingSq, C1, WK, EMPTY, EMPTY, queenSideCastle};
+                moves[cnt] = {kingpos, C1, WK, EMPTY, EMPTY, queenSideCastle};
                 cnt++;
             }
         }
         
         else{
             if(!(enemyAttackMap & bq_safe) && !(occ & bq_side)){
-                moves[cnt] = {kingSq, C8, BK, EMPTY, EMPTY, queenSideCastle};
+                moves[cnt] = {kingpos, C8, BK, EMPTY, EMPTY, queenSideCastle};
                 cnt++;
             }
         }
@@ -530,31 +519,13 @@ bool MoveGenerator::iskingattacked(U64 new_occ){
     U64 bishop = board.getBitboard(tomove == WHITE ? BB : WB);
     U64 rook = board.getBitboard(tomove == WHITE ? BR : WR);
     U64 queen = board.getBitboard(tomove == WHITE ? BQ : WQ);
-    Square king = getKingpos();
-    Color opp = (tomove == WHITE ? BLACK : WHITE);
+    Square king = kingpos;
 
-    while(bishop){
-        Square s = static_cast<Square>(popLSB(bishop));
-        U64 attack = attacks.getBishopAttack(s, new_occ) & (~board.getOccupancy(opp));
+    U64 bishopAttack = attacks.getBishopAttack(king, new_occ);
+    if (bishopAttack & (bishop | queen)) return true;
 
-        if(attack & (1ULL<<king)) return true;
-    }
-
-
-    while(rook){
-        Square s = static_cast<Square>(popLSB(rook));
-        U64 attack = attacks.getRookAttack(s, new_occ) & (~board.getOccupancy(opp));
-
-        if(attack & (1ULL<<king)) return true;
-    }
-
-
-    while(queen){
-        Square s = static_cast<Square>(popLSB(queen));
-        U64 attack = attacks.getQueenAttack(s, new_occ) & (~board.getOccupancy(opp));
-
-        if(attack & (1ULL<<king)) return true;
-    }
+    U64 rookAttack = attacks.getRookAttack(king, new_occ);
+    if (rookAttack & (rook | queen)) return true;
 
     return false;
 }
@@ -565,29 +536,34 @@ void MoveGenerator::generatePawnMoves(Move moves[],CheckInfo &info){
 
     Piece moved = (tomove == WHITE ? WP : BP);
     U64 pawn = board.getBitboard(moved);
+    U64 enemyocc = board.getOccupancy(tomove == WHITE ? BLACK : WHITE);
 
     constexpr int lastRank[2] = {RANK_SIZE - 1, 0};
     constexpr int firstRank[2] = {1, 6};
     constexpr Piece allprom[2][4] = {{WN, WB, WR, WQ}, {BN, BB, BR, BQ}}; 
     constexpr int rankoffset[2] = {8, -8};
 
+    U64 validTargets = enemyocc;
+    if(board.getEnPassant() != NO_SQUARE){
+        validTargets |= (1ULL << board.getEnPassant());
+    }
+
     while(pawn){
         int pos = popLSB(pawn);
         Square from = static_cast<Square>(pos);
 
         U64 attack = (tomove == WHITE ? attacks.getWhitePawnAttack(from) : attacks.getBlackPawnAttack(from))
-            & (~friendlyocc);
+            & validTargets;
 
-        // piece is pinned
-        if(info.pinnedPieces & (1ULL<<pos)) attack &= info.pinnedRay[from];
-
+        
         // king in check
         if(info.checkerCount == 1){
+            U64 prev = attack;
             attack &= info.checkMask;
 
             Square ep = board.getEnPassant();
 
-            if(ep != NO_SQUARE){
+            if(ep != NO_SQUARE && (prev & (1ULL<<ep))){
                 Square cap = static_cast<Square>(ep + rankoffset[!tomove]);
 
                 if(info.checkers & (1ULL<<cap)){
@@ -595,6 +571,10 @@ void MoveGenerator::generatePawnMoves(Move moves[],CheckInfo &info){
                 }
             }
         }
+
+
+        // piece is pinned
+        if(info.pinnedPieces & (1ULL<<pos)) attack &= info.pinnedRay[from];
 
         while(attack){
             Square dest = static_cast<Square>(popLSB(attack));
@@ -639,45 +619,50 @@ void MoveGenerator::generatePawnMoves(Move moves[],CheckInfo &info){
 
         // single pawn push
         Square firstpush = static_cast<Square>(from + rankoffset[tomove]);
-        U64 cur_move = (1ULL<<firstpush);
+        U64 first_mask = (1ULL<<firstpush);
 
-        if(occ & cur_move) continue;
-        
-        // piece is pinned
-        if(info.pinnedPieces & (1ULL<<pos)) cur_move &= info.pinnedRay[from];
+        if(!(occ & first_mask)){
+            U64 cur_single = first_mask;
+            
+            // piece is pinned
+            if(info.pinnedPieces & (1ULL<<pos)) cur_single &= info.pinnedRay[from];
 
-        // king in check
-        if(info.checkerCount == 1) cur_move &= info.checkMask;
+            // king in check
+            if(info.checkerCount == 1) cur_single &= info.checkMask;
 
-        if(!cur_move) continue;
+            if(cur_single){
+                if (getRank(firstpush) == lastRank[tomove]){
+                    for(auto prom : allprom[tomove]){
+                        moves[cnt] = {from, firstpush, moved, EMPTY, prom, promotion};
+                        cnt++;
+                    }
+                }
+                else{
+                    moves[cnt] = {from, firstpush, moved, EMPTY, EMPTY, quiet};
+                    cnt++;
+                }
+            }
 
-        if (getRank(firstpush) == lastRank[tomove]){
-            for(auto prom : allprom[tomove]){
-                moves[cnt] = {from, firstpush, moved, EMPTY, prom, promotion};
-                cnt++;
+            // double pawn push
+            if(getRank(from) == firstRank[tomove]){
+                Square secondpush = static_cast<Square>(firstpush + rankoffset[tomove]);
+                U64 second_mask = (1ULL<<secondpush);
+
+                if(!(occ & second_mask)){
+                    U64 cur_double = second_mask;
+
+                    // piece is pinned
+                    if(info.pinnedPieces & (1ULL<<pos)) cur_double &= info.pinnedRay[from];
+
+                    // king in check
+                    if(info.checkerCount == 1) cur_double &= info.checkMask;
+
+                    if(cur_double){
+                        moves[cnt] = {from, secondpush, moved, EMPTY, EMPTY, doublePawnPush};
+                        cnt++;
+                    }
+                }
             }
         }
-
-        else{
-            moves[cnt] = {from, firstpush, moved, EMPTY, EMPTY, quiet};
-            cnt++;
-        }
-
-
-        // double pawn push
-        if(getRank(from) != firstRank[tomove]) continue;
-
-        Square secondpush = static_cast<Square>(firstpush + rankoffset[tomove]);
-        cur_move = (1ULL<<secondpush);
-
-        if(occ & cur_move) continue;
-
-        // king in check
-        if(info.checkerCount == 1) cur_move &= info.checkMask;
-
-        if(!cur_move) continue;
-
-        moves[cnt] = {from, secondpush, moved, EMPTY, EMPTY, doublePawnPush};
-        cnt++;
     }
 }
