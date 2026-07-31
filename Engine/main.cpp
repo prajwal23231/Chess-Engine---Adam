@@ -2,7 +2,7 @@
 #include "board/board.h"
 #include "utils/type.h"
 #include "attack/attacks.h"
-#include "utils/zobrist.h"
+#include "hash/zobrist.h"
 #include <iostream>
 
 using namespace std;

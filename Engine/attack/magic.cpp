@@ -1,5 +1,5 @@
 #include "magic.h"
-#include "utils/magic_numbers.h"
+#include "magic_numbers.h"
 #include <cassert>
 using namespace std;
 using namespace Bitboard;

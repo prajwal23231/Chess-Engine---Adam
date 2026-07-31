@@ -5,7 +5,7 @@
 #include "moves/undomove.h"
 #include "utils/bitboard_utilities.h"
 #include "utils/type.h"
-#include "utils/zobrist.h"
+#include "hash/zobrist.h"
 #include <array>
 #include <string>
 

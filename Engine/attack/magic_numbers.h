@@ -1,5 +1,5 @@
 #pragma once
-#include "type.h"
+#include "utils/type.h"
 
 constexpr U64 bishopMagicNum[BOARD_SIZE] = {
     0x2010D13010808100ULL,

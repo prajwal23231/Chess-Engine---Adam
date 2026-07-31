@@ -1,8 +1,8 @@
 #pragma once
 #include <random>
-#include "type.h"
-#include "attack/magic_instance.h"
-#include "bitboard_utilities.h"
+#include "utils/type.h"
+#include "magic_instance.h"
+#include "utils/bitboard_utilities.h"
 
 class MagicGen{
 public:

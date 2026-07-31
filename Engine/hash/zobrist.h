@@ -1,5 +1,5 @@
 #pragma once
-#include "type.h"
+#include "utils/type.h"
 #include <unordered_set>
 
 // 16 -> castling rights is stored as 4 bits

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "attack/magic_instance.h"
+#include "magic_instance.h"
 #include "magicGen.h"
 
 int main(){
