@@ -30,6 +30,8 @@ private:
     U64 between[BOARD_SIZE][BOARD_SIZE];
     int cnt;
     U64 enemyAttackMap;
+    U64 occ, friendlyocc;
+    Color tomove;
 
 
     // layer 1
@@ -42,13 +44,16 @@ private:
     void computeDiagonalPins(CheckInfo &info) const;
 
 
-    void generateBishopMoves(Move moves[]);
-    void generateKingMoves(Move moves[]);
-    void generateKnightMoves(Move moves[]);
-    void generateQueenMoves(Move moves[]);
-    void generateRookMoves(Move moves[]);
-    void generatePawnMoves(Move moves[]);
+
+    void generateKingMoves(Move moves[],CheckInfo& info);
+    void generateKnightMoves(Move moves[],CheckInfo& info);
+    void generatePawnMoves(Move moves[],CheckInfo& info);
+    void generateQueenMoves(Move moves[],CheckInfo& info);
+    void generateRookMoves(Move moves[],CheckInfo& info);
+    void generateBishopMoves(Move moves[],CheckInfo& info);
 
 
     void computeBetween();
+    void fillMoves(Move moves[], U64 mask, Square from, Piece moved);
+    bool iskingattacked(U64 newocc);
 };
