@@ -30,6 +30,8 @@ int Evaluator::evaluate(const Board& board){
     int phase = calculatePhase(board);
 
     calculateMaterial(board, score);
+    calculatePST(board, score);
+    calculateBishopPair(board, score);
 
     return interpolate(score, phase);
 }
@@ -55,11 +57,58 @@ int Evaluator::interpolate(const EvalInfo& score, int phase){
 
 void Evaluator::calculateMaterial(const Board& board, EvalInfo& score){
     for(int i=0; i<NUM_PIECE_TYPE; i++){
-        Piece wp = static_cast<Piece>(i);
-        Piece bp = static_cast<Piece>(i+6);
+        Piece wp = static_cast<Piece>(WP + i);
+        Piece bp = static_cast<Piece>(BP + i);
 
         int cnt = popCount(board.getBitboard(wp)) - popCount(board.getBitboard(bp));
         score.mg += mg_value[i] * cnt;
         score.eg += eg_value[i] * cnt;
+    }
+}
+
+
+
+void Evaluator::calculatePST(const Board& board, EvalInfo& score){
+    for(int i=0; i<NUM_PIECE_TYPE; i++){
+        Piece wp = static_cast<Piece>(WP + i);
+        Piece bp = static_cast<Piece>(BP + i);
+
+        U64 wBb = board.getBitboard(wp);
+        U64 bBb = board.getBitboard(bp);
+
+        while(wBb){
+            Square s = static_cast<Square>(popLSB(wBb));
+            
+            score.mg += pst[MG][i][s];
+            score.eg += pst[EG][i][s];
+        }
+
+
+        while(bBb){
+            Square s = static_cast<Square>(popLSB(bBb));
+            
+            score.mg -= pst[MG][i][s^56];
+            score.eg -= pst[EG][i][s^56];
+        }
+    }
+}
+
+
+
+void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
+    U64 wBb = board.getBitboard(WB);
+    U64 bBb = board.getBitboard(BB);
+
+    int total_white = popCount(wBb);
+    int total_black = popCount(bBb);
+
+    if(total_white >= 2){
+        score.mg += BISHOP_PAIR_MG;
+        score.eg += BISHOP_PAIR_EG;
+    }
+
+    if(total_black >= 2){
+        score.mg -= BISHOP_PAIR_MG;
+        score.eg -= BISHOP_PAIR_EG;
     }
 }

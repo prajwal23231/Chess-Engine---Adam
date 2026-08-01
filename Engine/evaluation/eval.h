@@ -8,6 +8,11 @@ constexpr int ROOK_PHASE   = 2;
 constexpr int BISHOP_PHASE = 1;
 constexpr int KNIGHT_PHASE = 1;
 constexpr int TOTAL_PHASE = 24;
+constexpr int NUM_STAGE = 2; // middle game and end game
+
+constexpr int BISHOP_PAIR_MG = 25;
+constexpr int BISHOP_PAIR_EG = 50;
+
 
 
 struct EvalInfo{
@@ -36,4 +41,6 @@ private:
     int interpolate(const EvalInfo& score, int phase);
 
     void calculateMaterial(const Board& board,EvalInfo& score);
+    void calculatePST(const Board& board,EvalInfo& score);
+    void calculateBishopPair(const Board& board,EvalInfo& score);
 };

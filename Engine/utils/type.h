@@ -16,7 +16,6 @@ constexpr int RANK_SIZE = 8;
 constexpr int MAX_PLYS = 1024;
 constexpr int MAX_MOVES = 256;
 constexpr int NUM_PIECE_TYPE = 6;
-constexpr int NUM_STAGE = 2; // middle game and end game
 
 
 enum Color { WHITE, BLACK, BOTH };
@@ -105,6 +104,13 @@ enum PieceType {
     QUEEN,
     KING
 };
+
+
+
+
+// =========================
+// Evaluation Constants
+// =========================
 
 
 
