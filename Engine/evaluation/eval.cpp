@@ -12,6 +12,21 @@ Evaluator::Evaluator(){
         createpst();
         builtpst = true;
     }
+
+    if(!builtPassedMask){
+        createPassedMask();
+        builtPassedMask = true;
+    }
+
+    if(!builtFileMask){
+        createFileMask();
+        builtFileMask = true;
+    }
+
+    if(!builtIsolatedMask){
+        createIsolatedMask();
+        builtIsolatedMask = true;
+    }
 }
 
 
@@ -25,6 +40,81 @@ void Evaluator::createpst(){
 }
 
 
+
+void Evaluator::createPassedMask(){
+    for(int i=0; i<BOARD_SIZE; i++){
+        Square sq = static_cast<Square>(i);
+        int rank = getRank(sq);
+        int file = getFile(sq);
+
+        U64 whiteMask = 0;
+
+        for(int r=rank+1; r<RANK_SIZE; r++){
+            // current file
+            whiteMask |= (1ULL<<(r*RANK_SIZE + file));
+
+            // left file
+            if(file > 0) whiteMask |= (1ULL<<(r*RANK_SIZE + file - 1));
+
+            // right file
+            if(file < RANK_SIZE-1) whiteMask |= (1ULL<<(r*RANK_SIZE + file + 1));
+        }
+
+        whitePassedMask[sq] = whiteMask;
+
+
+
+        U64 blackMask = 0;
+
+        for(int r=rank-1; r>=0; r--){
+            // current file
+            blackMask |= (1ULL<<(r*RANK_SIZE + file));
+
+            // left file
+            if(file > 0) blackMask |= (1ULL<<(r*RANK_SIZE + file - 1));
+
+            // right file
+            if(file < RANK_SIZE-1) blackMask |= (1ULL<<(r*RANK_SIZE + file + 1));
+        }
+
+        blackPassedMask[sq] = blackMask;
+    }
+}
+
+
+
+void Evaluator::createFileMask(){
+    for(int file=0; file<8; file++){
+        U64 mask = 0;
+
+        for (int rank = 0; rank < RANK_SIZE; rank++) {
+            mask |= (1ULL << (rank * RANK_SIZE + file));
+        }
+
+        fileMask[file] = mask;
+    }
+}
+
+
+
+void Evaluator::createIsolatedMask(){
+    for(int file=0; file<8; file++){
+        U64 mask = 0;
+
+        for (int rank = 0; rank < RANK_SIZE; rank++) {
+            // left file
+            if(file>0) mask |= (1ULL << (rank * RANK_SIZE + file-1));
+
+            // right file
+            if(file<RANK_SIZE-1) mask |= (1ULL << (rank * RANK_SIZE + file+1));
+        }
+
+        isolatedMask[file] = mask;
+    }
+}
+
+
+
 int Evaluator::evaluate(const Board& board){
     EvalInfo score = {};
     int phase = calculatePhase(board);
@@ -32,6 +122,9 @@ int Evaluator::evaluate(const Board& board){
     calculateMaterial(board, score);
     calculatePST(board, score);
     calculateBishopPair(board, score);
+    calculatePassedPawns(board, score);
+    calculateDoubledPawns(board, score);
+    calculateIsolatedPawns(board, score);
 
     return interpolate(score, phase);
 }
@@ -110,5 +203,77 @@ void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
     if(total_black >= 2){
         score.mg -= BISHOP_PAIR_MG;
         score.eg -= BISHOP_PAIR_EG;
+    }
+}
+
+
+
+void Evaluator::calculatePassedPawns(const Board& board,EvalInfo& score){
+    U64 whitePawns = board.getBitboard(WP);
+    U64 blackPawns = board.getBitboard(BP);
+
+    U64 wp = whitePawns;
+    U64 bp = blackPawns;
+
+    while(wp){
+        Square s = static_cast<Square>(popLSB(wp));
+        if(whitePassedMask[s] & blackPawns) continue;
+
+        score.mg += passedPawnMG[getRank(s)];
+        score.eg += passedPawnEG[getRank(s)];
+    }
+
+
+    while(bp){
+        Square s = static_cast<Square>(popLSB(bp));
+        if(blackPassedMask[s] & whitePawns) continue;
+
+        int mirrored = RANK_SIZE - 1 - getRank(s);
+
+        score.mg -= passedPawnMG[mirrored];
+        score.eg -= passedPawnEG[mirrored];
+    }
+}
+
+
+void Evaluator::calculateDoubledPawns(const Board& board, EvalInfo& score){
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+
+    for(int file=0; file<8; file++){
+        U64 wmask = wp & fileMask[file];
+        U64 bmask = bp & fileMask[file];
+
+        int whiteDoubled = max(popCount(wmask) - 1, 0);
+        int blackDoubled = max(popCount(bmask) - 1, 0);
+
+        score.mg -= (whiteDoubled - blackDoubled)*DOUBLED_PAWN_MG;
+        score.eg -= (whiteDoubled - blackDoubled)*DOUBLED_PAWN_EG;
+    }
+}
+
+
+void Evaluator::calculateIsolatedPawns(const Board& board, EvalInfo& score){
+    U64 whitePawns = board.getBitboard(WP);
+    U64 blackPawns = board.getBitboard(BP);
+
+    U64 wp = whitePawns;
+    U64 bp = blackPawns;
+
+    while(wp){
+        Square s = static_cast<Square>(popLSB(wp));
+        if(isolatedMask[getFile(s)] & whitePawns) continue;
+
+        score.mg -= ISOLATED_PAWN_MG;
+        score.eg -= ISOLATED_PAWN_EG;
+    }
+
+
+    while(bp){
+        Square s = static_cast<Square>(popLSB(bp));
+        if(isolatedMask[getFile(s)] & blackPawns) continue;
+
+        score.mg += ISOLATED_PAWN_MG;
+        score.eg += ISOLATED_PAWN_EG;
     }
 }
