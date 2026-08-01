@@ -3,6 +3,7 @@
 #include "utils/type.h"
 #include "moves/movegen.h"
 #include "moves/move.h"
+#include "evaluation/eval.h"
 
 
 class Search{
