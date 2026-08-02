@@ -22,6 +22,10 @@ constexpr int DOUBLED_PAWN_EG = 18;
 constexpr int ISOLATED_PAWN_MG = 10;
 constexpr int ISOLATED_PAWN_EG = 15;
 
+constexpr int rookOpenFile[2]      = {20, 10};
+constexpr int rookSemiOpenFile[2]  = {10, 5};
+constexpr int rookSeventhRank[2]   = {15, 25};
+
 
 struct EvalInfo{
     int mg=0;
@@ -53,8 +57,9 @@ private:
 
 
     static U64 fileMask[8];
+    static U64 rankMask[8];
     static inline bool builtFileMask = false;
-    static void createFileMask();
+    static void createFileRankMask();
 
 
 

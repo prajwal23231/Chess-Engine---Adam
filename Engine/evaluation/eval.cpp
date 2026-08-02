@@ -19,7 +19,7 @@ Evaluator::Evaluator(){
     }
 
     if(!builtFileMask){
-        createFileMask();
+        createFileRankMask();
         builtFileMask = true;
     }
 
@@ -83,7 +83,7 @@ void Evaluator::createPassedMask(){
 
 
 
-void Evaluator::createFileMask(){
+void Evaluator::createFileRankMask(){
     for(int file=0; file<8; file++){
         U64 mask = 0;
 
@@ -92,6 +92,17 @@ void Evaluator::createFileMask(){
         }
 
         fileMask[file] = mask;
+    }
+
+
+    for(int rank=0; rank<8; rank++){
+        U64 mask = 0;
+
+        for (int file = 0; file < RANK_SIZE; file++) {
+            mask |= (1ULL << (rank * RANK_SIZE + file));
+        }
+
+        rankMask[rank] = mask;
     }
 }
 
@@ -126,6 +137,7 @@ int Evaluator::evaluate(const Board& board){
     calculateDoubledPawns(board, score);
     calculateIsolatedPawns(board, score);
     calculateMobility(board, score);
+    calculateRook(board, score);
 
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
@@ -392,3 +404,78 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
         score.eg -= queenMobilityEG[mobility];
     }
 }
+
+
+
+
+void Evaluator::calculateRook(const Board& board, EvalInfo& score){
+    U64 wr = board.getBitboard(WR);
+    U64 br = board.getBitboard(BR);
+
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+
+    U64 wkmask = board.getBitboard(WK) & rankMask[7];
+    U64 bkmask = board.getBitboard(BK) & rankMask[0];
+
+    U64 wrmask = wr & rankMask[6];
+    U64 brmask = br & rankMask[1];
+
+
+    // 7th rank boost
+    if(wrmask && (bkmask || (bp & rankMask[6]))){
+        score.mg += popCount(wrmask) * rookSeventhRank[MG];
+        score.eg += popCount(wrmask) * rookSeventhRank[EG];
+    }
+
+    if(brmask && (wkmask || (wp & rankMask[1]))){
+        score.mg -= popCount(brmask) * rookSeventhRank[MG];
+        score.eg -= popCount(brmask) * rookSeventhRank[EG];
+    }
+
+
+
+    // open file
+    while(wr){
+        Square s = static_cast<Square>(popLSB(wr));
+        int file = getFile(s);
+
+        U64 bpmask = bp & fileMask[file];
+        U64 wpmask = wp & fileMask[file];
+
+        if(!wpmask){
+            if(bpmask){
+                score.mg += rookSemiOpenFile[MG];
+                score.eg += rookSemiOpenFile[EG];
+            }
+
+            else{
+                score.mg += rookOpenFile[MG];
+                score.eg += rookOpenFile[EG];
+            }
+        }
+    }
+
+    while(br){
+        Square s = static_cast<Square>(popLSB(br));
+        int file = getFile(s);
+
+        U64 bpmask = bp & fileMask[file];
+        U64 wpmask = wp & fileMask[file];
+
+        if(!bpmask){
+            if(wpmask){
+                score.mg -= rookSemiOpenFile[MG];
+                score.eg -= rookSemiOpenFile[EG];
+            }
+
+            else{
+                score.mg -= rookOpenFile[MG];
+                score.eg -= rookOpenFile[EG];
+            }
+        }
+    }
+}
+
+
+
