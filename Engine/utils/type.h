@@ -260,3 +260,67 @@ constexpr const int* egTables[6] = {
     eg_pawn_table, eg_knight_table, eg_bishop_table,
     eg_rook_table, eg_queen_table, eg_king_table
 };
+
+
+
+constexpr int knightMobilityMG[9] = {
+    -40, -25, -12, -4, 4, 10, 16, 22, 28
+};
+
+constexpr int knightMobilityEG[9] = {
+    -30, -18, -8, 0, 6, 12, 18, 24, 30
+};
+
+
+
+constexpr int bishopMobilityMG[14] = {
+    -20, -12, -6, -2, 2, 6, 10,
+    14, 18, 22, 26, 30, 34, 38
+};
+
+constexpr int bishopMobilityEG[14] = {
+    -15, -8, -2, 2, 6, 10, 14,
+    18, 22, 26, 30, 34, 38, 42
+};
+
+
+
+constexpr int rookMobilityMG[15] = {
+    -15, -8, -2, 2, 6, 10, 14, 18,
+    22, 26, 30, 34, 38, 42, 46
+};
+
+constexpr int rookMobilityEG[15] = {
+    -10, -4, 2, 8, 14, 20, 26, 32,
+    38, 44, 50, 56, 62, 68, 74
+};
+
+
+
+constexpr int queenMobilityMG[28] = {
+    -10, -8, -6, -4, -2, 0, 2, 4,
+    6, 8, 10, 12, 14, 16,
+    18, 20, 22, 24, 26, 28,
+    30, 32, 34, 36, 38, 40,
+    42, 44
+};
+
+constexpr int queenMobilityEG[28] = {
+    -8, -6, -4, -2, 0, 2, 4, 6,
+    8, 10, 12, 14, 16, 18,
+    20, 22, 24, 26, 28, 30,
+    32, 34, 36, 38, 40, 42,
+    44, 46
+};
+
+
+
+constexpr const int* mobilityMg[6] = {
+    knightMobilityMG, bishopMobilityMG,
+    rookMobilityMG, queenMobilityMG
+};
+
+constexpr const int* mobilityEg[6] = {
+    knightMobilityEG, bishopMobilityEG,
+    rookMobilityEG, queenMobilityEG
+};

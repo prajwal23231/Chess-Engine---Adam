@@ -22,6 +22,7 @@ constexpr int DOUBLED_PAWN_EG = 18;
 constexpr int ISOLATED_PAWN_MG = 10;
 constexpr int ISOLATED_PAWN_EG = 15;
 
+
 struct EvalInfo{
     int mg=0;
     int eg=0;
@@ -71,4 +72,6 @@ private:
     void calculatePassedPawns(const Board& board,EvalInfo& score);
     void calculateDoubledPawns(const Board& board,EvalInfo& score);
     void calculateIsolatedPawns(const Board& board,EvalInfo& score);
+    void calculateMobility(const Board& board,EvalInfo& score);
+    void calculateRook(const Board& board, EvalInfo& info);
 };

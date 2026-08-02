@@ -125,8 +125,11 @@ int Evaluator::evaluate(const Board& board){
     calculatePassedPawns(board, score);
     calculateDoubledPawns(board, score);
     calculateIsolatedPawns(board, score);
+    calculateMobility(board, score);
 
-    return interpolate(score, phase);
+
+    int mult = (board.getMovingSide() == WHITE ? 1 : -1);
+    return mult * interpolate(score, phase);
 }
 
 
@@ -275,5 +278,117 @@ void Evaluator::calculateIsolatedPawns(const Board& board, EvalInfo& score){
 
         score.mg += ISOLATED_PAWN_MG;
         score.eg += ISOLATED_PAWN_EG;
+    }
+}
+
+
+
+void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
+    U64 wn = board.getBitboard(WN);
+    U64 bn = board.getBitboard(BN);
+
+    U64 wb = board.getBitboard(WB);
+    U64 bb = board.getBitboard(BB);
+
+    U64 wr = board.getBitboard(WR);
+    U64 br = board.getBitboard(BR);
+
+    U64 wq = board.getBitboard(WQ);
+    U64 bq = board.getBitboard(BQ);
+
+    U64 wocc = board.getOccupancy(WHITE);
+    U64 bocc = board.getOccupancy(BLACK);
+    U64 bothocc = board.getOccupancy(BOTH);
+
+
+
+    while(wn){
+        Square s = static_cast<Square>(popLSB(wn));
+        U64 attack = attacks.getKnightAttack(s) & (~wocc);
+
+        int mobility = popCount(attack);
+
+        score.mg += knightMobilityMG[mobility];
+        score.eg += knightMobilityEG[mobility];
+    }
+
+
+    while(bn){
+        Square s = static_cast<Square>(popLSB(bn));
+        U64 attack = attacks.getKnightAttack(s) & (~bocc);
+
+        int mobility = popCount(attack);
+
+        score.mg -= knightMobilityMG[mobility];
+        score.eg -= knightMobilityEG[mobility];
+    }
+
+
+
+    while(wb){
+        Square s = static_cast<Square>(popLSB(wb));
+        U64 attack = attacks.getBishopAttack(s, bothocc) & (~wocc);
+
+        int mobility = popCount(attack);
+
+        score.mg += bishopMobilityMG[mobility];
+        score.eg += bishopMobilityEG[mobility];
+    }
+
+
+    while(bb){
+        Square s = static_cast<Square>(popLSB(bb));
+        U64 attack = attacks.getBishopAttack(s, bothocc) & (~bocc);
+
+        int mobility = popCount(attack);
+
+        score.mg -= bishopMobilityMG[mobility];
+        score.eg -= bishopMobilityEG[mobility];
+    }
+
+
+
+    while(wr){
+        Square s = static_cast<Square>(popLSB(wr));
+        U64 attack = attacks.getRookAttack(s, bothocc) & (~wocc);
+
+        int mobility = popCount(attack);
+
+        score.mg += rookMobilityMG[mobility];
+        score.eg += rookMobilityEG[mobility];
+    }
+
+
+    while(br){
+        Square s = static_cast<Square>(popLSB(br));
+        U64 attack = attacks.getRookAttack(s, bothocc) & (~bocc);
+
+        int mobility = popCount(attack);
+
+        score.mg -= rookMobilityMG[mobility];
+        score.eg -= rookMobilityEG[mobility];
+    }
+
+
+
+    while(wq){
+        Square s = static_cast<Square>(popLSB(wq));
+        U64 attack = attacks.getQueenAttack(s, bothocc) & (~wocc);
+
+        int mobility = popCount(attack);
+
+        score.mg += queenMobilityMG[mobility];
+        score.eg += queenMobilityEG[mobility];
+    }
+
+
+    while(bq){
+        Square s = static_cast<Square>(popLSB(bq));
+        U64 attack = attacks.getQueenAttack(s, bothocc) & (~bocc);
+
+        int mobility = popCount(attack);
+
+        score.mg -= queenMobilityMG[mobility];
+        score.eg -= queenMobilityEG[mobility];
     }
 }
