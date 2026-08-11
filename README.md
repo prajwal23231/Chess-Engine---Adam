@@ -93,7 +93,7 @@ Adam/
 From the root `Adam/` directory:
 
 ```bash
-g++ -std=c++20 -O2 -I Engine Engine/main.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/perft/perft.cpp Engine/uci/uci.cpp Engine/utils/bitboard_utilities.cpp Engine/utils/zobrist.cpp -o ADAM
+g++ -std=c++20 -O2 -I Engine Engine/main.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/perft/perft.cpp Engine/uci/uci.cpp Engine/utils/bitboard_utilities.cpp Engine/hash/zobrist.cpp Engine/utils/tools.cpp Engine/evaluation/eval.cpp -o ADAM
 ./ADAM
 ```
 
@@ -119,19 +119,19 @@ g++ -std=c++20 -O2 -I Engine Engine/main.cpp Engine/board/board.cpp Engine/attac
 
 - **Legal Move Generator Test Suite**:
   ```bash
-  g++ -std=c++20 -O2 -I Engine Engine/test/movegen.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/utils/zobrist.cpp -o test_movegen
+  g++ -std=c++20 -O2 -I Engine Engine/test/movegen.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/hash/zobrist.cpp Engine/utils/tools.cpp -o test_movegen
   ./test_movegen
   ```
 
 - **MakeMove & Board State Test Suite**:
   ```bash
-  g++ -std=c++20 -O2 -I Engine Engine/test/makemove.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/utils/zobrist.cpp -o test_makemove
+  g++ -std=c++20 -O2 -I Engine Engine/test/makemove.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/hash/zobrist.cpp Engine/utils/tools.cpp -o test_makemove
   ./test_makemove
   ```
 
 - **Make/Undo Symmetry Test Suite**:
   ```bash
-  g++ -std=c++20 -O2 -I Engine Engine/test/undoMoveTest.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/utils/zobrist.cpp -o test_undomove
+  g++ -std=c++20 -O2 -I Engine Engine/test/undoMoveTest.cpp Engine/board/board.cpp Engine/attack/attacks.cpp Engine/attack/magic.cpp Engine/attack/magic_instance.cpp Engine/moves/move.cpp Engine/moves/movegen.cpp Engine/utils/bitboard_utilities.cpp Engine/hash/zobrist.cpp Engine/utils/tools.cpp -o test_undomove
   ./test_undomove
   ```
 

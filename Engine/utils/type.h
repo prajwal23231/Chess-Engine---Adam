@@ -99,8 +99,8 @@ enum Stage {
 enum PieceType {
     PAWN,
     KNIGHT,
-    BISHOP,
     ROOK,
+    BISHOP,
     QUEEN,
     KING
 };
@@ -112,10 +112,44 @@ enum PieceType {
 // Evaluation Constants
 // =========================
 
+constexpr int QUEEN_PHASE = 4;
+constexpr int ROOK_PHASE = 2;
+constexpr int BISHOP_PHASE = 1;
+constexpr int KNIGHT_PHASE = 1;
+constexpr int TOTAL_PHASE = 24;
+constexpr int NUM_STAGE = 2; // middle game and end game
+
+constexpr int BISHOP_PAIR_MG = 25;
+constexpr int BISHOP_PAIR_EG = 50;
+
+constexpr int passedPawnMG[RANK_SIZE] = {0, 5, 10, 20, 35, 60, 100, 0};
+constexpr int passedPawnEG[RANK_SIZE] = {0, 10, 20, 40, 70, 120, 200, 0};
+
+constexpr int DOUBLED_PAWN_MG = 12;
+constexpr int DOUBLED_PAWN_EG = 18;
+
+constexpr int ISOLATED_PAWN_MG = 10;
+constexpr int ISOLATED_PAWN_EG = 15;
+
+constexpr int rookOpenFile[2] = {20, 10};
+constexpr int rookSemiOpenFile[2] = {10, 5};
+constexpr int rookSeventhRank[2] = {15, 25};
+constexpr int rookBehindOwnPassedPawn[2] = {20, 35};
+constexpr int rookBehindEnemyPassedPawn[2] = {10, 20};
+constexpr int rookInFrontOwnPassedPawn[2] = {-10, -20};
+constexpr int rookInFrontEnemyPassedPawn[2] = {5, 10};
+constexpr int connectedRooks[2] = {5, 8};
+
+constexpr int connectedPawnMG[8] = {0, 4, 6, 8, 10, 14, 18, 0};
+constexpr int connectedPawnEG[8] = {0, 6, 8, 12, 16, 22, 30, 0};
+constexpr int protectedPawnMG[8] = {0, 2, 3, 5, 7, 10, 14, 0};
+constexpr int protectedPawnEG[8] = {0, 2, 4, 6, 9, 12, 16, 0};
+
+constexpr int knightOutpost[2] = {18, 12};
 
 
-constexpr int mg_value[6] = { 82, 337, 365, 477, 1025, 0};
-constexpr int eg_value[6] = { 94, 281, 297, 512,  936, 0};
+constexpr int mg_value[6] = { 82, 337, 477, 365, 1025, 0};
+constexpr int eg_value[6] = { 94, 281, 512, 297,  936, 0};
 
 constexpr int mg_pawn_table[64] = {
       0,   0,   0,   0,   0,   0,   0,   0,
@@ -249,16 +283,16 @@ constexpr int eg_king_table[64] = {
     -53, -34, -21, -11, -28, -14, -24, -43
 };
 
-constexpr int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
+constexpr int gamephaseInc[6] = {0, 1, 2, 1, 4, 0};
 
 constexpr const int* mgTables[6] = {
-    mg_pawn_table, mg_knight_table, mg_bishop_table,
-    mg_rook_table, mg_queen_table, mg_king_table
+    mg_pawn_table, mg_knight_table, mg_rook_table,
+    mg_bishop_table, mg_queen_table, mg_king_table
 };
 
 constexpr const int* egTables[6] = {
-    eg_pawn_table, eg_knight_table, eg_bishop_table,
-    eg_rook_table, eg_queen_table, eg_king_table
+    eg_pawn_table, eg_knight_table, eg_rook_table,
+    eg_bishop_table, eg_queen_table, eg_king_table
 };
 
 
@@ -311,16 +345,4 @@ constexpr int queenMobilityEG[28] = {
     20, 22, 24, 26, 28, 30,
     32, 34, 36, 38, 40, 42,
     44, 46
-};
-
-
-
-constexpr const int* mobilityMg[6] = {
-    knightMobilityMG, bishopMobilityMG,
-    rookMobilityMG, queenMobilityMG
-};
-
-constexpr const int* mobilityEg[6] = {
-    knightMobilityEG, bishopMobilityEG,
-    rookMobilityEG, queenMobilityEG
 };

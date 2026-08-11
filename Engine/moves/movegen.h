@@ -1,6 +1,7 @@
 #pragma once
 #include "utils/type.h"
 #include "attack/attacks.h"
+#include "utils/tools.h"
 #include <vector>
 #include "move.h"
 #include "utils/bitboard_utilities.h"
@@ -27,9 +28,6 @@ public:
 private:
     Board& board;
 
-    inline static U64 between[BOARD_SIZE][BOARD_SIZE];
-    inline static bool isBetweenInitialized = false;
-
     int cnt;
     U64 enemyAttackMap;
     U64 occ, friendlyocc;
@@ -54,7 +52,6 @@ private:
     void generateBishopMoves(Move moves[],CheckInfo& info);
 
 
-    void computeBetween();
     void fillMoves(Move moves[], U64 mask, Square from, Piece moved);
     bool iskingattacked(U64 newocc);
 };

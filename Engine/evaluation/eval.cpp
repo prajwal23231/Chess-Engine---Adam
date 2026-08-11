@@ -1,129 +1,12 @@
 #include "eval.h"
 #include "board/board.h"
 #include "utils/bitboard_utilities.h"
+#include "utils/tools.h"
+#include "attack/attacks.h"
 #include <algorithm>
 
 using namespace std;
 using namespace Bitboard;
-
-
-Evaluator::Evaluator(){
-    if(!builtpst){
-        createpst();
-        builtpst = true;
-    }
-
-    if(!builtPassedMask){
-        createPassedMask();
-        builtPassedMask = true;
-    }
-
-    if(!builtFileMask){
-        createFileRankMask();
-        builtFileMask = true;
-    }
-
-    if(!builtIsolatedMask){
-        createIsolatedMask();
-        builtIsolatedMask = true;
-    }
-}
-
-
-void Evaluator::createpst(){
-    for (int piece = 0; piece < 6; ++piece) {
-        for (int sq = 0; sq < 64; ++sq) {
-            pst[MG][piece][sq ^ 56] = mgTables[piece][sq];
-            pst[EG][piece][sq ^ 56] = egTables[piece][sq];
-        }
-    }
-}
-
-
-
-void Evaluator::createPassedMask(){
-    for(int i=0; i<BOARD_SIZE; i++){
-        Square sq = static_cast<Square>(i);
-        int rank = getRank(sq);
-        int file = getFile(sq);
-
-        U64 whiteMask = 0;
-
-        for(int r=rank+1; r<RANK_SIZE; r++){
-            // current file
-            whiteMask |= (1ULL<<(r*RANK_SIZE + file));
-
-            // left file
-            if(file > 0) whiteMask |= (1ULL<<(r*RANK_SIZE + file - 1));
-
-            // right file
-            if(file < RANK_SIZE-1) whiteMask |= (1ULL<<(r*RANK_SIZE + file + 1));
-        }
-
-        whitePassedMask[sq] = whiteMask;
-
-
-
-        U64 blackMask = 0;
-
-        for(int r=rank-1; r>=0; r--){
-            // current file
-            blackMask |= (1ULL<<(r*RANK_SIZE + file));
-
-            // left file
-            if(file > 0) blackMask |= (1ULL<<(r*RANK_SIZE + file - 1));
-
-            // right file
-            if(file < RANK_SIZE-1) blackMask |= (1ULL<<(r*RANK_SIZE + file + 1));
-        }
-
-        blackPassedMask[sq] = blackMask;
-    }
-}
-
-
-
-void Evaluator::createFileRankMask(){
-    for(int file=0; file<8; file++){
-        U64 mask = 0;
-
-        for (int rank = 0; rank < RANK_SIZE; rank++) {
-            mask |= (1ULL << (rank * RANK_SIZE + file));
-        }
-
-        fileMask[file] = mask;
-    }
-
-
-    for(int rank=0; rank<8; rank++){
-        U64 mask = 0;
-
-        for (int file = 0; file < RANK_SIZE; file++) {
-            mask |= (1ULL << (rank * RANK_SIZE + file));
-        }
-
-        rankMask[rank] = mask;
-    }
-}
-
-
-
-void Evaluator::createIsolatedMask(){
-    for(int file=0; file<8; file++){
-        U64 mask = 0;
-
-        for (int rank = 0; rank < RANK_SIZE; rank++) {
-            // left file
-            if(file>0) mask |= (1ULL << (rank * RANK_SIZE + file-1));
-
-            // right file
-            if(file<RANK_SIZE-1) mask |= (1ULL << (rank * RANK_SIZE + file+1));
-        }
-
-        isolatedMask[file] = mask;
-    }
-}
-
 
 
 int Evaluator::evaluate(const Board& board){
@@ -133,11 +16,10 @@ int Evaluator::evaluate(const Board& board){
     calculateMaterial(board, score);
     calculatePST(board, score);
     calculateBishopPair(board, score);
-    calculatePassedPawns(board, score);
-    calculateDoubledPawns(board, score);
-    calculateIsolatedPawns(board, score);
     calculateMobility(board, score);
     calculateRook(board, score);
+    calculatePawns(board, score);
+    calculateKnightOutpost(board, score);
 
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
@@ -222,42 +104,155 @@ void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
 }
 
 
-
-void Evaluator::calculatePassedPawns(const Board& board,EvalInfo& score){
+void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
     U64 whitePawns = board.getBitboard(WP);
     U64 blackPawns = board.getBitboard(BP);
 
     U64 wp = whitePawns;
     U64 bp = blackPawns;
 
+    U64 wr = board.getBitboard(WR);
+    U64 br = board.getBitboard(BR);
+
+
     while(wp){
         Square s = static_cast<Square>(popLSB(wp));
-        if(whitePassedMask[s] & blackPawns) continue;
+        bool passed = !(whitePassedMask[s] & blackPawns);
+        int file = getFile(s), rank = getRank(s);
 
-        score.mg += passedPawnMG[getRank(s)];
-        score.eg += passedPawnEG[getRank(s)];
+        if(passed){
+            score.mg += passedPawnMG[rank];
+            score.eg += passedPawnEG[rank];
+
+            // rook and passed pawn
+            U64 rookmask = wr & fileMask[file];
+            U64 enemyrook = br & fileMask[file];
+
+            while(rookmask){
+                Square rooksq = static_cast<Square>(popLSB(rookmask));
+
+                if(getRank(rooksq) > rank){
+                    score.mg += rookInFrontOwnPassedPawn[MG];
+                    score.eg += rookInFrontOwnPassedPawn[EG];
+                }
+
+                else{
+                    score.mg += rookBehindOwnPassedPawn[MG];
+                    score.eg += rookBehindOwnPassedPawn[EG];
+                }
+            }
+
+
+            while(enemyrook){
+                Square rooksq = static_cast<Square>(popLSB(enemyrook));
+
+                if(getRank(rooksq) > rank){
+                    score.mg -= rookInFrontEnemyPassedPawn[MG];
+                    score.eg -= rookInFrontEnemyPassedPawn[EG];
+                }
+
+                else{
+                    score.mg -= rookBehindEnemyPassedPawn[MG];
+                    score.eg -= rookBehindEnemyPassedPawn[EG];
+                }
+            }
+        }
+
+
+        // isolated pawn
+        if(!(isolatedMask[file] & whitePawns)){
+            score.mg -= ISOLATED_PAWN_MG;
+            score.eg -= ISOLATED_PAWN_EG;
+        }
+
+
+        // connected pawns
+        if(adjacentFileMask[file] & rankMask[rank] & whitePawns){
+            score.mg += connectedPawnMG[rank];
+            score.eg += connectedPawnEG[rank];
+        }
+
+
+        // protected pawns
+        if(attacks.getBlackPawnAttack(s) & whitePawns){
+            score.mg += protectedPawnMG[rank];
+            score.eg += protectedPawnEG[rank];
+        }
     }
 
 
     while(bp){
         Square s = static_cast<Square>(popLSB(bp));
-        if(blackPassedMask[s] & whitePawns) continue;
-
         int mirrored = RANK_SIZE - 1 - getRank(s);
+        bool passed = !(blackPassedMask[s] & whitePawns);
+        int file = getFile(s), rank = getRank(s);
 
-        score.mg -= passedPawnMG[mirrored];
-        score.eg -= passedPawnEG[mirrored];
+
+        if(passed){
+            score.mg -= passedPawnMG[mirrored];
+            score.eg -= passedPawnEG[mirrored];
+            
+            // rook and passed pawn
+            U64 rookmask = br & fileMask[file];
+            U64 enemyrook = wr & fileMask[file];
+
+            while(rookmask){
+                Square rooksq = static_cast<Square>(popLSB(rookmask));
+
+                if(getRank(rooksq) < rank){
+                    score.mg -= rookInFrontOwnPassedPawn[MG];
+                    score.eg -= rookInFrontOwnPassedPawn[EG];
+                }
+
+                else{
+                    score.mg -= rookBehindOwnPassedPawn[MG];
+                    score.eg -= rookBehindOwnPassedPawn[EG];
+                }
+            }
+
+
+            while(enemyrook){
+                Square rooksq = static_cast<Square>(popLSB(enemyrook));
+
+                if(getRank(rooksq) < rank){
+                    score.mg += rookInFrontEnemyPassedPawn[MG];
+                    score.eg += rookInFrontEnemyPassedPawn[EG];
+                }
+
+                else{
+                    score.mg -= rookBehindEnemyPassedPawn[MG];
+                    score.eg -= rookBehindEnemyPassedPawn[EG];
+                }
+            }
+        }
+
+
+        // isolated pawn
+        if(!(isolatedMask[file] & blackPawns)){
+            score.mg += ISOLATED_PAWN_MG;
+            score.eg += ISOLATED_PAWN_EG;
+        }
+
+
+        // connected pawns
+        if(adjacentFileMask[file] & rankMask[rank] & blackPawns){
+            score.mg -= connectedPawnMG[mirrored];
+            score.eg -= connectedPawnEG[mirrored];
+        }
+
+
+        // protected pawns
+        if(attacks.getWhitePawnAttack(s) & blackPawns){
+            score.mg -= protectedPawnMG[mirrored];
+            score.eg -= protectedPawnEG[mirrored];
+        }
     }
-}
 
 
-void Evaluator::calculateDoubledPawns(const Board& board, EvalInfo& score){
-    U64 wp = board.getBitboard(WP);
-    U64 bp = board.getBitboard(BP);
-
+    // doubled pawns
     for(int file=0; file<8; file++){
-        U64 wmask = wp & fileMask[file];
-        U64 bmask = bp & fileMask[file];
+        U64 wmask = whitePawns & fileMask[file];
+        U64 bmask = blackPawns & fileMask[file];
 
         int whiteDoubled = max(popCount(wmask) - 1, 0);
         int blackDoubled = max(popCount(bmask) - 1, 0);
@@ -266,33 +261,6 @@ void Evaluator::calculateDoubledPawns(const Board& board, EvalInfo& score){
         score.eg -= (whiteDoubled - blackDoubled)*DOUBLED_PAWN_EG;
     }
 }
-
-
-void Evaluator::calculateIsolatedPawns(const Board& board, EvalInfo& score){
-    U64 whitePawns = board.getBitboard(WP);
-    U64 blackPawns = board.getBitboard(BP);
-
-    U64 wp = whitePawns;
-    U64 bp = blackPawns;
-
-    while(wp){
-        Square s = static_cast<Square>(popLSB(wp));
-        if(isolatedMask[getFile(s)] & whitePawns) continue;
-
-        score.mg -= ISOLATED_PAWN_MG;
-        score.eg -= ISOLATED_PAWN_EG;
-    }
-
-
-    while(bp){
-        Square s = static_cast<Square>(popLSB(bp));
-        if(isolatedMask[getFile(s)] & blackPawns) continue;
-
-        score.mg += ISOLATED_PAWN_MG;
-        score.eg += ISOLATED_PAWN_EG;
-    }
-}
-
 
 
 void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
@@ -407,7 +375,6 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
 
 
 
-
 void Evaluator::calculateRook(const Board& board, EvalInfo& score){
     U64 wr = board.getBitboard(WR);
     U64 br = board.getBitboard(BR);
@@ -415,11 +382,13 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
     U64 wp = board.getBitboard(WP);
     U64 bp = board.getBitboard(BP);
 
-    U64 wkmask = board.getBitboard(WK) & rankMask[7];
-    U64 bkmask = board.getBitboard(BK) & rankMask[0];
+    U64 wkmask = board.getBitboard(WK) & rankMask[0];
+    U64 bkmask = board.getBitboard(BK) & rankMask[7];
 
     U64 wrmask = wr & rankMask[6];
     U64 brmask = br & rankMask[1];
+
+    U64 occ = board.getOccupancy(BOTH);
 
 
     // 7th rank boost
@@ -454,6 +423,13 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg += rookOpenFile[EG];
             }
         }
+
+
+        // connected rooks
+        if(attacks.getRookAttack(s,occ) & wr){
+            score.mg += connectedRooks[MG];
+            score.eg += connectedRooks[EG];
+        }
     }
 
     while(br){
@@ -474,8 +450,45 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg -= rookOpenFile[EG];
             }
         }
+
+
+        // connected rooks
+        if(attacks.getRookAttack(s,occ) & br){
+            score.mg -= connectedRooks[MG];
+            score.eg -= connectedRooks[EG];
+        }
     }
 }
 
+
+void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score){
+    U64 wn = board.getBitboard(WN);
+    U64 bn = board.getBitboard(BN);
+
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+
+    while(wn){
+        Square s = static_cast<Square>(popLSB(wn));
+        int rank = getRank(s);        
+        if((bp & whiteOutpostMask[s]) || rank < 3) continue;
+
+        if(attacks.getBlackPawnAttack(s) & wp){
+            score.mg += knightOutpost[MG];
+            score.eg += knightOutpost[EG];
+        }
+    }
+
+    while(bn){
+        Square s = static_cast<Square>(popLSB(bn));
+        int rank = getRank(s);        
+        if((wp & blackOutpostMask[s]) || rank > 4) continue;
+
+        if(attacks.getWhitePawnAttack(s) & bp){
+            score.mg -= knightOutpost[MG];
+            score.eg -= knightOutpost[EG];
+        }
+    }
+}
 
 
