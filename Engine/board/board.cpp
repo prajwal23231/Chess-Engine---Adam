@@ -23,12 +23,9 @@ namespace {
 Board::Board(){
     clear();
 
-    initPawnAttacks();
-    initKingAttacks();
-    initKnightAttacks();
-
     // initialised at the end
     zobristKey = Zobrist::generateHash(*this);
+    pawnKey = Zobrist::generatePawnHash(*this);
 }
 
 void Board::clear(){
@@ -43,6 +40,9 @@ void Board::clear(){
     halfmoveClock = 0;
     fullmoveNumber = 1;
     ply=0;
+
+    zobristKey = 0;
+    pawnKey = 0;
 }
 
 Square Board::parseEnPassantSquare(char file,int rank,Color tomove){
@@ -81,6 +81,7 @@ bool Board::loadFEN(const string &fen){
     int i=0, j=BOARD_SIZE-RANK_SIZE , cur=BOARD_SIZE-RANK_SIZE;
     array<Piece, BOARD_SIZE> temp_board;
     temp_board.fill(EMPTY);
+    U64 key = 0;
 
 
     while(i<fen.size() && fen[i] != ' '){
@@ -115,7 +116,12 @@ bool Board::loadFEN(const string &fen){
             Piece p = charToPiece(fen[i]);
             // invalid character
             if(p==EMPTY) return false;
-            temp_board[j++] = p;
+            temp_board[j] = p;
+
+            if(p == WP) key ^= Zobrist::getPawnKeys(WHITE, static_cast<Square>(j));
+            else if(p == BP) key ^= Zobrist::getPawnKeys(BLACK, static_cast<Square>(j));
+
+            j++;
         }
 
         i++;
@@ -252,6 +258,7 @@ bool Board::loadFEN(const string &fen){
     ply=0;
 
     zobristKey = Zobrist::generateHash(*this);
+    pawnKey = key;
 
     return true;
 }
@@ -337,7 +344,8 @@ bool Board::makeMove(const Move &move){
         castlingRights,
         enPassant,
         halfmoveClock,
-        zobristKey
+        zobristKey,
+        pawnKey
     };
 
     Piece moved = move.getMovedPiece();
@@ -369,6 +377,11 @@ bool Board::makeMove(const Move &move){
     // placing moved piece to dest
     setBit(occupancies[BOTH], to);
     setBit(occupancies[sideToMove], to);
+
+
+    if(moved == WP || moved == BP){
+        pawnKey ^= Zobrist::getPawnKeys(sideToMove, from);
+    }
     
 
     if(move.isPromotion()){
@@ -381,6 +394,10 @@ bool Board::makeMove(const Move &move){
         setBit(bitboards[moved], to);
         board[to] = moved;
         zobristKey ^= Zobrist::getPieceKeys(moved, to);
+
+        if(moved == WP || moved == BP){
+            pawnKey ^= Zobrist::getPawnKeys(sideToMove, to);
+        }
     }
 
 
@@ -394,12 +411,18 @@ bool Board::makeMove(const Move &move){
         clearBit(occupancies[opp], s);
         clearBit(occupancies[BOTH], s);
         zobristKey ^= Zobrist::getPieceKeys(captured, s);
+
+        pawnKey ^= Zobrist::getPawnKeys(opp, s);
     }
 
     else if(move.isCapture()){
         clearBit(bitboards[captured], to);
         clearBit(occupancies[opp], to);
         zobristKey ^= Zobrist::getPieceKeys(captured, to);
+
+        if(captured == WP || captured == BP){
+            pawnKey ^= Zobrist::getPawnKeys(opp, to);
+        }
     }
 
 
@@ -493,6 +516,7 @@ void Board::undoMove(const Move &move){
     enPassant = data.enpassant;
     halfmoveClock = data.halfMoveClock;
     zobristKey = data.zobristKey;
+    pawnKey = data.pawnKey;
 
     Piece moved = move.getMovedPiece();
     Piece captured = move.getCapturedPiece();
@@ -592,96 +616,3 @@ void Board::undoMove(const Move &move){
 }
 
 
-void Board::initPawnAttacks(){
-    constexpr int whiteMove[2][2] = {{1,-1}, {1,1}};
-    constexpr int blackMove[2][2] = {{-1,-1}, {-1,1}};
-
-    for(int i=0; i<BOARD_SIZE; i++){
-        Square s = static_cast<Square>(i);
-        int cur_rank = getRank(s);
-        int cur_file = getFile(s);
-
-        // white
-        U64 wAttack = 0;
-        
-        for(int j=0;j<2;j++){
-            int new_rank = cur_rank + whiteMove[j][0];
-            int new_file = cur_file + whiteMove[j][1];
-
-            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-                setBit(wAttack, source);
-            }
-        }
-
-        pawnAttacks[WHITE][s] = wAttack;
-
-
-        // black
-        U64 bAttack = 0;
-        
-        for(int j=0;j<2;j++){
-            int new_rank = cur_rank + blackMove[j][0];
-            int new_file = cur_file + blackMove[j][1];
-
-            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-                setBit(bAttack, source);
-            }
-        }
-
-        pawnAttacks[BLACK][s] = bAttack;
-    }
-}
-
-
-void Board::initKingAttacks(){
-    constexpr int kingMoves[8][2] = {{1,0}, {-1,0}, {0,1}, {0,-1}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
-
-    for(int i=0; i<BOARD_SIZE; i++){
-        Square s = static_cast<Square>(i);
-        int cur_rank = getRank(s);
-        int cur_file = getFile(s);
-
-        U64 kAttack = 0;
-        
-        for(int j=0;j<8;j++){
-            int new_rank = cur_rank + kingMoves[j][0];
-            int new_file = cur_file + kingMoves[j][1];
-
-            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-                setBit(kAttack, source);
-            }
-        }
-
-        kingAttacks[s] = kAttack;
-    }
-}
-
-
-void Board::initKnightAttacks(){
-    constexpr int knightMoves[8][2] = {{2,1}, {2,-1}, {1,2}, {-1,2}, {-2,1}, {-2,-1}, {1,-2}, {-1,-2}};
-
-    for(int i=0; i<BOARD_SIZE; i++){
-        Square s = static_cast<Square>(i);
-        int cur_rank = getRank(s);
-        int cur_file = getFile(s);
-
-        U64 nAttack = 0;
-        
-        for(int j=0;j<8;j++){
-            int new_rank = cur_rank + knightMoves[j][0];
-            int new_file = cur_file + knightMoves[j][1];
-
-            if(new_rank >=0 && new_file >=0 && new_rank < RANK_SIZE && new_file < RANK_SIZE){
-                Square source = static_cast<Square>(new_rank*RANK_SIZE + new_file);
-                setBit(nAttack, source);
-            }
-        }
-
-        knightAttacks[s] = nAttack;
-    }
-}
-
-

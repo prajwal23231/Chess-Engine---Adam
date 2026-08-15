@@ -40,7 +40,7 @@ int Evaluator::calculatePhase(const Board& board){
 
 
 int Evaluator::interpolate(const EvalInfo& score, int phase){
-    int totalScore = (score.mg*phase + score.eg*(TOTAL_PHASE - phase))/TOTAL_PHASE;
+    int totalScore = (score.mg*phase + score.eg*(TOTAL_PHASE - phase)+ TOTAL_PHASE/2)/TOTAL_PHASE;
     return totalScore;
 }
 
@@ -69,16 +69,16 @@ void Evaluator::calculatePST(const Board& board, EvalInfo& score){
         while(wBb){
             Square s = static_cast<Square>(popLSB(wBb));
             
-            score.mg += pst[MG][i][s];
-            score.eg += pst[EG][i][s];
+            score.mg += pst[WHITE][MG][i][s];
+            score.eg += pst[WHITE][EG][i][s];
         }
 
 
         while(bBb){
             Square s = static_cast<Square>(popLSB(bBb));
             
-            score.mg -= pst[MG][i][s^56];
-            score.eg -= pst[EG][i][s^56];
+            score.mg -= pst[BLACK][MG][i][s];
+            score.eg -= pst[BLACK][EG][i][s];
         }
     }
 }
@@ -89,15 +89,12 @@ void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
     U64 wBb = board.getBitboard(WB);
     U64 bBb = board.getBitboard(BB);
 
-    int total_white = popCount(wBb);
-    int total_black = popCount(bBb);
-
-    if(total_white >= 2){
+    if((wBb & LIGHT_SQUARES) && (wBb & DARK_SQUARES)){
         score.mg += BISHOP_PAIR_MG;
         score.eg += BISHOP_PAIR_EG;
     }
 
-    if(total_black >= 2){
+    if((bBb & LIGHT_SQUARES) && (bBb & DARK_SQUARES)){
         score.mg -= BISHOP_PAIR_MG;
         score.eg -= BISHOP_PAIR_EG;
     }
@@ -117,8 +114,8 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
 
     while(wp){
         Square s = static_cast<Square>(popLSB(wp));
-        bool passed = !(whitePassedMask[s] & blackPawns);
         int file = getFile(s), rank = getRank(s);
+        bool passed = !(whitePassedMask[s] & (blackPawns | (fileMask[file] & whitePawns)));
 
         if(passed){
             score.mg += passedPawnMG[rank];
@@ -147,13 +144,13 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 Square rooksq = static_cast<Square>(popLSB(enemyrook));
 
                 if(getRank(rooksq) > rank){
-                    score.mg -= rookInFrontEnemyPassedPawn[MG];
-                    score.eg -= rookInFrontEnemyPassedPawn[EG];
+                    score.mg += rookInFrontEnemyPassedPawn[MG];
+                    score.eg += rookInFrontEnemyPassedPawn[EG];
                 }
 
                 else{
-                    score.mg -= rookBehindEnemyPassedPawn[MG];
-                    score.eg -= rookBehindEnemyPassedPawn[EG];
+                    score.mg += rookBehindEnemyPassedPawn[MG];
+                    score.eg += rookBehindEnemyPassedPawn[EG];
                 }
             }
         }
@@ -163,6 +160,15 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
         if(!(isolatedMask[file] & whitePawns)){
             score.mg -= ISOLATED_PAWN_MG;
             score.eg -= ISOLATED_PAWN_EG;
+
+            // semi open
+            bool semiopen = !(fileMask[file] & blackPawns);
+            bool blockedbyown = !(whitePassedMask[s] & fileMask[file] & whitePawns);
+
+            if(semiopen && blockedbyown){
+                score.mg -= ISOLATED_PAWN_SEMI_OPEN_MG;
+                score.eg -= ISOLATED_PAWN_SEMI_OPEN_EG;
+            }
         }
 
 
@@ -178,14 +184,23 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             score.mg += protectedPawnMG[rank];
             score.eg += protectedPawnEG[rank];
         }
+
+        // backward pawns
+        U64 backMask = blackPassedMask[s] & adjacentFileMask[file] & whitePawns;
+        U64 stopMask = attacks.getWhitePawnAttack(static_cast<Square>(s+8)) & blackPawns;
+
+        if(stopMask && !backMask){
+            score.mg -= BACKWARD_PAWN_MG;
+            score.eg -= BACKWARD_PAWN_EG;
+        }
     }
 
 
     while(bp){
         Square s = static_cast<Square>(popLSB(bp));
         int mirrored = RANK_SIZE - 1 - getRank(s);
-        bool passed = !(blackPassedMask[s] & whitePawns);
         int file = getFile(s), rank = getRank(s);
+        bool passed = !(blackPassedMask[s] & (whitePawns | (fileMask[file] & blackPawns)));
 
 
         if(passed){
@@ -215,8 +230,8 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 Square rooksq = static_cast<Square>(popLSB(enemyrook));
 
                 if(getRank(rooksq) < rank){
-                    score.mg += rookInFrontEnemyPassedPawn[MG];
-                    score.eg += rookInFrontEnemyPassedPawn[EG];
+                    score.mg -= rookInFrontEnemyPassedPawn[MG];
+                    score.eg -= rookInFrontEnemyPassedPawn[EG];
                 }
 
                 else{
@@ -231,6 +246,15 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
         if(!(isolatedMask[file] & blackPawns)){
             score.mg += ISOLATED_PAWN_MG;
             score.eg += ISOLATED_PAWN_EG;
+
+            // semi open
+            bool semiopen = !(fileMask[file] & whitePawns);
+            bool blockedbyown = !(blackPassedMask[s] & fileMask[file] & blackPawns);
+
+            if(semiopen && blockedbyown){
+                score.mg += ISOLATED_PAWN_SEMI_OPEN_MG;
+                score.eg += ISOLATED_PAWN_SEMI_OPEN_EG;
+            }
         }
 
 
@@ -245,6 +269,15 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
         if(attacks.getWhitePawnAttack(s) & blackPawns){
             score.mg -= protectedPawnMG[mirrored];
             score.eg -= protectedPawnEG[mirrored];
+        }
+
+        // backward pawns
+        U64 backMask = whitePassedMask[s] & adjacentFileMask[file] & blackPawns;
+        U64 stopMask = attacks.getBlackPawnAttack(static_cast<Square>(s-8)) & whitePawns;
+
+        if(stopMask && !backMask){
+            score.mg += BACKWARD_PAWN_MG;
+            score.eg += BACKWARD_PAWN_EG;
         }
     }
 
@@ -379,6 +412,9 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
     U64 wr = board.getBitboard(WR);
     U64 br = board.getBitboard(BR);
 
+    U64 whiteRook = wr;
+    U64 blackRook = br;
+
     U64 wp = board.getBitboard(WP);
     U64 bp = board.getBitboard(BP);
 
@@ -423,13 +459,6 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg += rookOpenFile[EG];
             }
         }
-
-
-        // connected rooks
-        if(attacks.getRookAttack(s,occ) & wr){
-            score.mg += connectedRooks[MG];
-            score.eg += connectedRooks[EG];
-        }
     }
 
     while(br){
@@ -449,13 +478,6 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.mg -= rookOpenFile[MG];
                 score.eg -= rookOpenFile[EG];
             }
-        }
-
-
-        // connected rooks
-        if(attacks.getRookAttack(s,occ) & br){
-            score.mg -= connectedRooks[MG];
-            score.eg -= connectedRooks[EG];
         }
     }
 }

@@ -15,7 +15,7 @@ U64 blackOutpostMask[BOARD_SIZE];
 U64 adjacentFileMask[8];
 U64 isolatedMask[8];
 
-int pst[NUM_STAGE][NUM_PIECE_TYPE][BOARD_SIZE];
+int pst[2][NUM_STAGE][NUM_PIECE_TYPE][BOARD_SIZE];
 
 void computeBetween(){
     for(int i=0; i<BOARD_SIZE; i++){
@@ -86,8 +86,11 @@ void computeBetween(){
 void createpst(){
     for (int piece = 0; piece < 6; ++piece) {
         for (int sq = 0; sq < 64; ++sq) {
-            pst[MG][piece][sq ^ 56] = mgTables[piece][sq];
-            pst[EG][piece][sq ^ 56] = egTables[piece][sq];
+            pst[WHITE][MG][piece][sq ^ 56] = mgTables[piece][sq];
+            pst[WHITE][EG][piece][sq ^ 56] = egTables[piece][sq];
+
+            pst[BLACK][MG][piece][sq] = mgTables[piece][sq];
+            pst[BLACK][EG][piece][sq] = egTables[piece][sq];
         }
     }
 }

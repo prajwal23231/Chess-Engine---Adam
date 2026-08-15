@@ -26,9 +26,8 @@ namespace Bitboard {
     }
 
     inline int popLSB(U64& bb) {
-        int pos = lsb(bb);
-        if (pos == -1) return -1;
-
+        if(!bb) return -1;
+        int pos = __builtin_ctzll(bb);
         bb &= (bb - 1);
         return pos;
     }

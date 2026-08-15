@@ -11,11 +11,13 @@ public:
     Zobrist() = delete;
     static void init();
     static U64 generateHash(const Board& board);
+    static U64 generatePawnHash(const Board& board);
 
-    static U64 getPieceKeys(Piece p, Square s);
-    static U64 getCastleKeys(int right);
-    static U64 getEnPassantKeys(int rank);
-    static U64 getSideKey();
+    static inline U64 getPieceKeys(Piece p, Square s) { return pieceKeys[p][s]; }
+    static inline U64 getCastleKeys(int rights) { return castleKeys[rights]; }
+    static inline U64 getEnPassantKeys(int file) { return enPassantKeys[file]; }
+    static inline U64 getSideKey() { return sideKey; }
+    static inline U64 getPawnKeys(Color c, Square s) { return (c == WHITE) ? pieceKeys[WP][s] : pieceKeys[BP][s]; }
 
 private:
     static U64 pieceKeys[NUM_PIECES][BOARD_SIZE];

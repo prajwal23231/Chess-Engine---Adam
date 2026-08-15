@@ -1,5 +1,5 @@
 #pragma once
-#include "attack/magic_instance.h"
+#include "attack/attacks.h"
 #include "moves/move.h"
 #include "moves/movegen.h"
 #include "moves/undomove.h"
@@ -35,6 +35,7 @@ public:
 	inline bool isSquareAttacked(Square square, Color bySide) const;
 
 	inline U64 getZobristKey() const { return zobristKey; }
+	inline U64 getPawnKey() const{ return pawnKey; };
 
 private:
 	std::array<U64, NUM_PIECES> bitboards;
@@ -54,21 +55,13 @@ private:
 	int ply = 0;
 
 	U64 zobristKey;
+	U64 pawnKey;
 
 	Square parseEnPassantSquare(char pos, int rank, Color tomove);
 	void rebuildBitboards();
 	static char pieceToChar(Piece p);
 
 	void updateOccupancies();
-
-	// square attack lookup
-	U64 pawnAttacks[2][BOARD_SIZE];
-	U64 knightAttacks[BOARD_SIZE];
-	U64 kingAttacks[BOARD_SIZE];
-
-	void initPawnAttacks();
-	void initKnightAttacks();
-	void initKingAttacks();
 };
 
 inline bool Board::isSquareAttacked(Square square, Color bySide) const {
@@ -79,26 +72,24 @@ inline bool Board::isSquareAttacked(Square square, Color bySide) const {
 	Piece rook = (bySide == WHITE ? WR : BR);
 	Piece queen = (bySide == WHITE ? WQ : BQ);
 	Piece king = (bySide == WHITE ? WK : BK);
-	Color opp = (bySide == WHITE ? BLACK : WHITE);
 
-	if (pawnAttacks[opp][square] & bitboards[pawn])
+	U64 pawnAttack = (bySide == WHITE ? attacks.getBlackPawnAttack(square) : attacks.getWhitePawnAttack(square));
+	if (pawnAttack & bitboards[pawn])
 		return true;
 
-	if (kingAttacks[square] & bitboards[king])
+	if (attacks.getKingAttack(square) & bitboards[king])
 		return true;
 
-	if (knightAttacks[square] & bitboards[knight])
+	if (attacks.getKnightAttack(square) & bitboards[knight])
 		return true;
 
-	if (g_magic.getBishopAttack(square, occupancies[BOTH]) & bitboards[bishop])
+	if (attacks.getBishopAttack(square, occupancies[BOTH]) & bitboards[bishop])
 		return true;
 
-	if (g_magic.getRookAttack(square, occupancies[BOTH]) & bitboards[rook])
+	if (attacks.getRookAttack(square, occupancies[BOTH]) & bitboards[rook])
 		return true;
 
-	if ((g_magic.getBishopAttack(square, occupancies[BOTH]) |
-		g_magic.getRookAttack(square, occupancies[BOTH])) &
-		bitboards[queen])
+	if (attacks.getQueenAttack(square, occupancies[BOTH]) & bitboards[queen])
 		return true;
 
 	return false;

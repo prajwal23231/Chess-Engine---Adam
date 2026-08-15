@@ -101,5 +101,5 @@ public:
     }
 
 private:
-    U32 move;
+    U32 move = 0;
 };

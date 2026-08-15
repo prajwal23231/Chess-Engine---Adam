@@ -20,4 +20,4 @@ extern U64 blackOutpostMask[BOARD_SIZE];
 extern U64 adjacentFileMask[8];
 extern U64 isolatedMask[8];
 
-extern int pst[NUM_STAGE][NUM_PIECE_TYPE][BOARD_SIZE];
+extern int pst[2][NUM_STAGE][NUM_PIECE_TYPE][BOARD_SIZE];

@@ -111,6 +111,8 @@ enum PieceType {
 // =========================
 // Evaluation Constants
 // =========================
+constexpr U64 DARK_SQUARES  = 0xAA55AA55AA55AA55ULL;
+constexpr U64 LIGHT_SQUARES = 0x55AA55AA55AA55AAULL;
 
 constexpr int QUEEN_PHASE = 4;
 constexpr int ROOK_PHASE = 2;
@@ -130,6 +132,8 @@ constexpr int DOUBLED_PAWN_EG = 18;
 
 constexpr int ISOLATED_PAWN_MG = 10;
 constexpr int ISOLATED_PAWN_EG = 15;
+constexpr int ISOLATED_PAWN_SEMI_OPEN_MG = 8;
+constexpr int ISOLATED_PAWN_SEMI_OPEN_EG = 10;
 
 constexpr int rookOpenFile[2] = {20, 10};
 constexpr int rookSemiOpenFile[2] = {10, 5};
@@ -138,12 +142,17 @@ constexpr int rookBehindOwnPassedPawn[2] = {20, 35};
 constexpr int rookBehindEnemyPassedPawn[2] = {10, 20};
 constexpr int rookInFrontOwnPassedPawn[2] = {-10, -20};
 constexpr int rookInFrontEnemyPassedPawn[2] = {5, 10};
-constexpr int connectedRooks[2] = {5, 8};
+constexpr int connectedRooks[2] = {10, 16};
 
 constexpr int connectedPawnMG[8] = {0, 4, 6, 8, 10, 14, 18, 0};
 constexpr int connectedPawnEG[8] = {0, 6, 8, 12, 16, 22, 30, 0};
 constexpr int protectedPawnMG[8] = {0, 2, 3, 5, 7, 10, 14, 0};
 constexpr int protectedPawnEG[8] = {0, 2, 4, 6, 9, 12, 16, 0};
+
+constexpr int BACKWARD_PAWN_MG = 14;
+constexpr int BACKWARD_PAWN_EG = 18;
+constexpr int BACKWARD_PAWN_SEMI_OPEN_MG = 20;
+constexpr int BACKWARD_PAWN_SEMI_OPEN_EG = 24;
 
 constexpr int knightOutpost[2] = {18, 12};
 

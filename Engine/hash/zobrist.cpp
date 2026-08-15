@@ -1,5 +1,6 @@
 #include "zobrist.h"
 #include "board/board.h"
+#include "utils/bitboard_utilities.h"
 #include <random>
 
 U64 Zobrist::pieceKeys[NUM_PIECES][BOARD_SIZE];
@@ -54,11 +55,8 @@ U64 Zobrist::generateHash(const Board &board){
         Square square = static_cast<Square>(s);
         Piece p = board.getPieceBoard(square);
 
-        if(p == EMPTY) continue;
-
-        hash ^= pieceKeys[p][square];
+        if(p != EMPTY) hash ^= pieceKeys[p][square];
     }
-
 
     if(board.getMovingSide() == BLACK) hash ^= sideKey;
 
@@ -76,21 +74,21 @@ U64 Zobrist::generateHash(const Board &board){
 }
 
 
-U64 Zobrist::getPieceKeys(Piece p,Square s){
-    return pieceKeys[p][s];
-}
+U64 Zobrist::generatePawnHash(const Board &board){
+    U64 hash = 0;
 
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
 
-U64 Zobrist::getCastleKeys(int rights){
-    return castleKeys[rights];
-}
+    while(wp){
+        Square s = static_cast<Square>(Bitboard::popLSB(wp));
+        hash ^= pieceKeys[WP][s];
+    }
 
+    while(bp){
+        Square s = static_cast<Square>(Bitboard::popLSB(bp));
+        hash ^= pieceKeys[BP][s];
+    }
 
-U64 Zobrist::getEnPassantKeys(int rank){
-    return enPassantKeys[rank];
-}
-
-
-U64 Zobrist::getSideKey(){
-    return sideKey;
+    return hash;
 }
