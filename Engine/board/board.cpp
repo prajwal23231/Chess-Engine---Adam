@@ -43,6 +43,7 @@ void Board::clear(){
 
     zobristKey = 0;
     pawnKey = 0;
+    gamePhase = 0;
 }
 
 Square Board::parseEnPassantSquare(char file,int rank,Color tomove){
@@ -266,11 +267,13 @@ bool Board::loadFEN(const string &fen){
 
 void Board::rebuildBitboards(){
     bitboards.fill(0);
+    gamePhase = 0;
 
     for(int i=0 ; i<BOARD_SIZE ; i++){
         Piece p = board[i];
         if(p==EMPTY) continue;
         setBit(bitboards[p], static_cast<Square>(i));
+        gamePhase += piecePhase[p];
     }
 }
 
@@ -345,7 +348,8 @@ bool Board::makeMove(const Move &move){
         enPassant,
         halfmoveClock,
         zobristKey,
-        pawnKey
+        pawnKey,
+        gamePhase
     };
 
     Piece moved = move.getMovedPiece();
@@ -388,6 +392,7 @@ bool Board::makeMove(const Move &move){
         setBit(bitboards[promotionPiece], to);
         board[to] = promotionPiece;
         zobristKey ^= Zobrist::getPieceKeys(promotionPiece, to);
+        gamePhase += piecePhase[promotionPiece];
     }
 
     else{
@@ -423,6 +428,7 @@ bool Board::makeMove(const Move &move){
         if(captured == WP || captured == BP){
             pawnKey ^= Zobrist::getPawnKeys(opp, to);
         }
+        gamePhase -= piecePhase[captured];
     }
 
 
@@ -517,6 +523,7 @@ void Board::undoMove(const Move &move){
     halfmoveClock = data.halfMoveClock;
     zobristKey = data.zobristKey;
     pawnKey = data.pawnKey;
+    gamePhase = data.gamePhase;
 
     Piece moved = move.getMovedPiece();
     Piece captured = move.getCapturedPiece();

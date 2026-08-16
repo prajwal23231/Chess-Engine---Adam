@@ -121,6 +121,11 @@ constexpr int KNIGHT_PHASE = 1;
 constexpr int TOTAL_PHASE = 24;
 constexpr int NUM_STAGE = 2; // middle game and end game
 
+constexpr int piecePhase[NUM_PIECES] = {
+    0, KNIGHT_PHASE, ROOK_PHASE, BISHOP_PHASE, QUEEN_PHASE, 0, // WP, WN, WR, WB, WQ, WK
+    0, KNIGHT_PHASE, ROOK_PHASE, BISHOP_PHASE, QUEEN_PHASE, 0  // BP, BN, BR, BB, BQ, BK
+};
+
 constexpr int BISHOP_PAIR_MG = 25;
 constexpr int BISHOP_PAIR_EG = 50;
 
@@ -142,7 +147,7 @@ constexpr int rookBehindOwnPassedPawn[2] = {20, 35};
 constexpr int rookBehindEnemyPassedPawn[2] = {10, 20};
 constexpr int rookInFrontOwnPassedPawn[2] = {-10, -20};
 constexpr int rookInFrontEnemyPassedPawn[2] = {5, 10};
-constexpr int connectedRooks[2] = {10, 16};
+constexpr int connectedRooks[2] = {5, 8};
 
 constexpr int connectedPawnMG[8] = {0, 4, 6, 8, 10, 14, 18, 0};
 constexpr int connectedPawnEG[8] = {0, 6, 8, 12, 16, 22, 30, 0};

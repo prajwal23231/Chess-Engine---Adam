@@ -20,7 +20,6 @@ public:
 	int evaluate(const Board &board);
 
 private:
-	int calculatePhase(const Board &board);
 	int interpolate(const EvalInfo &score, int phase);
 
 	void calculateMaterial(const Board &board, EvalInfo &score);

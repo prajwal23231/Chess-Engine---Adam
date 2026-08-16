@@ -8,10 +8,18 @@
 using namespace std;
 using namespace Bitboard;
 
+namespace {
+    constexpr int phase256[TOTAL_PHASE + 1] = {
+          0,  11,  21,  32,  43,  53,  64,  75,
+         85,  96, 107, 117, 128, 139, 149, 160,
+        171, 181, 192, 203, 213, 224, 235, 245, 256
+    };
+}
+
 
 int Evaluator::evaluate(const Board& board){
     EvalInfo score = {};
-    int phase = calculatePhase(board);
+    int phase = std::clamp(board.getGamePhase(), 0, TOTAL_PHASE);
 
     calculateMaterial(board, score);
     calculatePST(board, score);
@@ -27,21 +35,9 @@ int Evaluator::evaluate(const Board& board){
 }
 
 
-int Evaluator::calculatePhase(const Board& board){
-    int phase = 0;
-
-    phase += QUEEN_PHASE*(popCount(board.getBitboard(WQ)) + popCount(board.getBitboard(BQ)));
-    phase += ROOK_PHASE*(popCount(board.getBitboard(WR)) + popCount(board.getBitboard(BR)));
-    phase += KNIGHT_PHASE*(popCount(board.getBitboard(WN)) + popCount(board.getBitboard(BN)));
-    phase += BISHOP_PHASE*(popCount(board.getBitboard(WB)) + popCount(board.getBitboard(BB)));
-
-    return clamp(phase, 0, TOTAL_PHASE);
-}
-
-
 int Evaluator::interpolate(const EvalInfo& score, int phase){
-    int totalScore = (score.mg*phase + score.eg*(TOTAL_PHASE - phase)+ TOTAL_PHASE/2)/TOTAL_PHASE;
-    return totalScore;
+    int p = phase256[phase];
+    return (score.mg * p + score.eg * (256 - p)) >> 8;
 }
 
 
@@ -144,13 +140,13 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 Square rooksq = static_cast<Square>(popLSB(enemyrook));
 
                 if(getRank(rooksq) > rank){
-                    score.mg += rookInFrontEnemyPassedPawn[MG];
-                    score.eg += rookInFrontEnemyPassedPawn[EG];
+                    score.mg -= rookInFrontEnemyPassedPawn[MG];
+                    score.eg -= rookInFrontEnemyPassedPawn[EG];
                 }
 
                 else{
-                    score.mg += rookBehindEnemyPassedPawn[MG];
-                    score.eg += rookBehindEnemyPassedPawn[EG];
+                    score.mg -= rookBehindEnemyPassedPawn[MG];
+                    score.eg -= rookBehindEnemyPassedPawn[EG];
                 }
             }
         }
@@ -230,13 +226,13 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 Square rooksq = static_cast<Square>(popLSB(enemyrook));
 
                 if(getRank(rooksq) < rank){
-                    score.mg -= rookInFrontEnemyPassedPawn[MG];
-                    score.eg -= rookInFrontEnemyPassedPawn[EG];
+                    score.mg += rookInFrontEnemyPassedPawn[MG];
+                    score.eg += rookInFrontEnemyPassedPawn[EG];
                 }
 
                 else{
-                    score.mg -= rookBehindEnemyPassedPawn[MG];
-                    score.eg -= rookBehindEnemyPassedPawn[EG];
+                    score.mg += rookBehindEnemyPassedPawn[MG];
+                    score.eg += rookBehindEnemyPassedPawn[EG];
                 }
             }
         }
@@ -418,8 +414,8 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
     U64 wp = board.getBitboard(WP);
     U64 bp = board.getBitboard(BP);
 
-    U64 wkmask = board.getBitboard(WK) & rankMask[0];
-    U64 bkmask = board.getBitboard(BK) & rankMask[7];
+    U64 wmask = (board.getBitboard(WK) & rankMask[0]) | (board.getBitboard(WP) & rankMask[1]);
+    U64 bmask = (board.getBitboard(BK) & rankMask[7]) | (board.getBitboard(BP) & rankMask[6]);
 
     U64 wrmask = wr & rankMask[6];
     U64 brmask = br & rankMask[1];
@@ -428,12 +424,12 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
 
 
     // 7th rank boost
-    if(wrmask && (bkmask || (bp & rankMask[6]))){
+    if(wrmask && bmask){
         score.mg += popCount(wrmask) * rookSeventhRank[MG];
         score.eg += popCount(wrmask) * rookSeventhRank[EG];
     }
 
-    if(brmask && (wkmask || (wp & rankMask[1]))){
+    if(brmask && wmask){
         score.mg -= popCount(brmask) * rookSeventhRank[MG];
         score.eg -= popCount(brmask) * rookSeventhRank[EG];
     }
@@ -443,7 +439,7 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
     // open file
     while(wr){
         Square s = static_cast<Square>(popLSB(wr));
-        int file = getFile(s);
+        int file = getFile(s), rank=getRank(s);
 
         U64 bpmask = bp & fileMask[file];
         U64 wpmask = wp & fileMask[file];
@@ -459,11 +455,32 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg += rookOpenFile[EG];
             }
         }
+
+
+        // connected rook
+        U64 rmask = (whiteRook^(1ULL<<s)) & rankMask[rank];
+        U64 fmask = (whiteRook^(1ULL<<s)) & fileMask[file];
+
+        while(rmask){
+            Square other = static_cast<Square>(popLSB(rmask));
+            if(!(between[s][other] & occ)){
+                score.mg += connectedRooks[MG];
+                score.eg += connectedRooks[EG];
+            }
+        }
+
+        while(fmask){
+            Square other = static_cast<Square>(popLSB(fmask));
+            if(!(between[s][other] & occ)){
+                score.mg -= connectedRooks[MG];
+                score.eg -= connectedRooks[EG];
+            }
+        }
     }
 
     while(br){
         Square s = static_cast<Square>(popLSB(br));
-        int file = getFile(s);
+        int file = getFile(s), rank = getRank(s);
 
         U64 bpmask = bp & fileMask[file];
         U64 wpmask = wp & fileMask[file];
@@ -477,6 +494,27 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
             else{
                 score.mg -= rookOpenFile[MG];
                 score.eg -= rookOpenFile[EG];
+            }
+        }
+
+
+        // connected rook
+        U64 rmask = (blackRook^(1ULL<<s)) & rankMask[rank];
+        U64 fmask = (blackRook^(1ULL<<s)) & fileMask[file];
+
+        while(rmask){
+            Square other = static_cast<Square>(popLSB(rmask));
+            if(!(between[s][other] & occ)){
+                score.mg -= connectedRooks[MG];
+                score.eg -= connectedRooks[EG];
+            }
+        }
+
+        while(fmask){
+            Square other = static_cast<Square>(popLSB(fmask));
+            if(!(between[s][other] & occ)){
+                score.mg -= connectedRooks[MG];
+                score.eg -= connectedRooks[EG];
             }
         }
     }
@@ -512,5 +550,3 @@ void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score){
         }
     }
 }
-
-

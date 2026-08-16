@@ -37,6 +37,7 @@ struct BoardState {
     Square enPassant;
     int    halfmoveClock;
     int    fullmoveNumber;
+    int    gamePhase;
 };
 
 static BoardState captureState(const Board &b) {
@@ -53,6 +54,7 @@ static BoardState captureState(const Board &b) {
     s.enPassant       = b.getEnPassant();
     s.halfmoveClock   = b.getHalfMoveClock();
     s.fullmoveNumber  = b.getFullMoveNumber();
+    s.gamePhase       = b.getGamePhase();
     return s;
 }
 
@@ -125,6 +127,11 @@ static bool diffStates(const BoardState &a, const BoardState &b) {
         same = false;
         cout << "    fullmoveNumber mismatch: expected " << a.fullmoveNumber
              << " got " << b.fullmoveNumber << "\n";
+    }
+    if (a.gamePhase != b.gamePhase) {
+        same = false;
+        cout << "    gamePhase mismatch: expected " << a.gamePhase
+             << " got " << b.gamePhase << "\n";
     }
 
     return same;

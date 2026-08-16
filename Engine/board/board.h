@@ -36,6 +36,7 @@ public:
 
 	inline U64 getZobristKey() const { return zobristKey; }
 	inline U64 getPawnKey() const{ return pawnKey; };
+	inline int getGamePhase() const { return gamePhase; }
 
 private:
 	std::array<U64, NUM_PIECES> bitboards;
@@ -56,6 +57,7 @@ private:
 
 	U64 zobristKey;
 	U64 pawnKey;
+	int gamePhase = TOTAL_PHASE;
 
 	Square parseEnPassantSquare(char pos, int rank, Color tomove);
 	void rebuildBitboards();

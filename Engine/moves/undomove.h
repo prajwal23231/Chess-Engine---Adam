@@ -7,4 +7,5 @@ struct UndoInfo{
     int halfMoveClock;
     U64 zobristKey;
     U64 pawnKey;
+    int gamePhase;
 };
