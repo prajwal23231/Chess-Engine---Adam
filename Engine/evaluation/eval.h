@@ -28,9 +28,8 @@ private:
 	void calculateMaterial(const Board &board, EvalInfo &score);
 	void calculatePST(const Board &board, EvalInfo &score);
 	void calculateBishopPair(const Board &board, EvalInfo &score);
-	void calculateMobility(const Board &board, EvalInfo &score);
-	void calculateRook(const Board &board, EvalInfo &info);
-	void calculateKnightOutpost(const Board &board, EvalInfo &score);
+	void calculateMobility(const Board &board, EvalInfo &score, PawnEntry* entry);
+	void calculateRook(const Board &board, EvalInfo &info, PawnEntry* entry);
+	void calculateKnightOutpost(const Board &board, EvalInfo &score,PawnEntry* entry);
 	void calculatePawns(const Board &board, EvalInfo &score);
-	void calculateRooksOnPassedPawns(const Board &board, EvalInfo &score, U64 wPassed, U64 bPassed);
 };

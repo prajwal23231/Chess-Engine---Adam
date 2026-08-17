@@ -22,12 +22,16 @@ int Evaluator::evaluate(const Board& board){
     int phase = std::clamp(board.getGamePhase(), 0, TOTAL_PHASE);
 
     calculateMaterial(board, score);
-    calculatePawns(board, score);
     calculatePST(board, score);
     calculateBishopPair(board, score);
-    calculateRook(board, score);
-    calculateKnightOutpost(board, score);
-    calculateMobility(board, score);
+    calculatePawns(board, score);
+
+    U64 key = board.getPawnKey();
+    PawnEntry* entry = pawntable.probe(key);
+
+    calculateRook(board, score, entry);
+    calculateKnightOutpost(board, score, entry);
+    calculateMobility(board, score, entry);
 
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
@@ -104,7 +108,6 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
     if(entry){
         score.mg += entry->mg;
         score.eg += entry->eg;
-        calculateRooksOnPassedPawns(board, score, entry->passedPawns[WHITE], entry->passedPawns[BLACK]);
         return ;
     }
 
@@ -250,11 +253,10 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
     pawntable.store(key, pawnMG, pawnEG, wPassed, bPassed, wAttacks, bAttacks);
     score.mg+=pawnMG;
     score.eg+=pawnEG;
-    calculateRooksOnPassedPawns(board, score, wPassed, bPassed);
 }
 
 
-void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
+void Evaluator::calculateMobility(const Board& board, EvalInfo& score, PawnEntry* entry){
     U64 wn = board.getBitboard(WN);
     U64 bn = board.getBitboard(BN);
 
@@ -270,9 +272,6 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
     U64 wocc = board.getOccupancy(WHITE);
     U64 bocc = board.getOccupancy(BLACK);
     U64 bothocc = board.getOccupancy(BOTH);
-
-    U64 key = board.getPawnKey();
-    PawnEntry *entry = pawntable.probe(key);
 
     U64 bpattacks = entry->pawnAttacks[BLACK];
     U64 wpattacks = entry->pawnAttacks[WHITE];
@@ -374,7 +373,7 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score){
 
 
 
-void Evaluator::calculateRook(const Board& board, EvalInfo& score){
+void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* entry){
     U64 wr = board.getBitboard(WR);
     U64 br = board.getBitboard(BR);
 
@@ -446,6 +445,41 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg -= connectedRooks[EG];
             }
         }
+
+
+        // rook and passed pawn
+        U64 rattack = attacks.getRookAttack(s,occ) & fileMask[file];
+
+        U64 wtotalPassed = entry->passedPawns[WHITE] & rattack;
+        U64 btotalPassed = entry->passedPawns[BLACK] & rattack;
+
+        while(wtotalPassed){
+            Square wpassed = static_cast<Square>(popLSB(wtotalPassed));
+
+            if(getRank(wpassed)<rank){
+                score.mg += rookInFrontOwnPassedPawn[MG];
+                score.eg += rookInFrontOwnPassedPawn[EG];
+            }
+
+            else{
+                score.mg += rookBehindOwnPassedPawn[MG];
+                score.eg += rookBehindOwnPassedPawn[EG];
+            }
+        }
+
+        while(btotalPassed){
+            Square bpassed = static_cast<Square>(popLSB(btotalPassed));
+
+            if(getRank(bpassed)>rank){
+                score.mg += rookInFrontOwnPassedPawn[MG];
+                score.eg += rookInFrontOwnPassedPawn[EG];
+            }
+
+            else{
+                score.mg += rookBehindOwnPassedPawn[MG];
+                score.eg += rookBehindOwnPassedPawn[EG];
+            }
+        }
     }
 
     while(br){
@@ -487,14 +521,46 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score){
                 score.eg -= connectedRooks[EG];
             }
         }
+
+
+        // rook and passed pawn
+        U64 rattack = attacks.getRookAttack(s,occ) & fileMask[file];
+
+        U64 wtotalPassed = entry->passedPawns[WHITE] & rattack;
+        U64 btotalPassed = entry->passedPawns[BLACK] & rattack;
+
+        while(wtotalPassed){
+            Square wpassed = static_cast<Square>(popLSB(wtotalPassed));
+
+            if(getRank(wpassed)<rank){
+                score.mg -= rookInFrontOwnPassedPawn[MG];
+                score.eg -= rookInFrontOwnPassedPawn[EG];
+            }
+
+            else{
+                score.mg -= rookBehindOwnPassedPawn[MG];
+                score.eg -= rookBehindOwnPassedPawn[EG];
+            }
+        }
+
+        while(btotalPassed){
+            Square bpassed = static_cast<Square>(popLSB(btotalPassed));
+
+            if(getRank(bpassed)>rank){
+                score.mg -= rookInFrontOwnPassedPawn[MG];
+                score.eg -= rookInFrontOwnPassedPawn[EG];
+            }
+
+            else{
+                score.mg -= rookBehindOwnPassedPawn[MG];
+                score.eg -= rookBehindOwnPassedPawn[EG];
+            }
+        }
     }
 }
 
 
-void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score){
-    U64 key = board.getPawnKey();
-    PawnEntry* entry = pawntable.probe(key);
-
+void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, PawnEntry* entry){
     U64 wn = board.getBitboard(WN) & entry->pawnAttacks[WHITE];
     U64 bn = board.getBitboard(BN) & entry->pawnAttacks[BLACK];
 
@@ -517,91 +583,5 @@ void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score){
 
         score.mg -= knightOutpost[MG];
         score.eg -= knightOutpost[EG];
-    }
-}
-
-
-
-void Evaluator::calculateRooksOnPassedPawns(const Board &board, EvalInfo & score, U64 wPassed, U64 bPassed){
-    U64 wr = board.getBitboard(WR);
-    U64 br = board.getBitboard(BR);
-
-    U64 wp = wPassed, bp = bPassed;
-
-    while(wp){
-        Square s = static_cast<Square>(popLSB(wp));
-        int rank = getRank(s), file = getFile(s);
-
-        // rook and passed pawn
-        U64 rookmask = wr & fileMask[file];
-        U64 enemyrook = br & fileMask[file];
-
-        while(rookmask){
-            Square rooksq = static_cast<Square>(popLSB(rookmask));
-
-            if(getRank(rooksq) > rank){
-                score.mg += rookInFrontOwnPassedPawn[MG];
-                score.eg += rookInFrontOwnPassedPawn[EG];
-            }
-
-            else{
-                score.mg += rookBehindOwnPassedPawn[MG];
-                score.eg += rookBehindOwnPassedPawn[EG];
-            }
-        }
-
-
-        while(enemyrook){
-            Square rooksq = static_cast<Square>(popLSB(enemyrook));
-
-            if(getRank(rooksq) > rank){
-                score.mg -= rookInFrontEnemyPassedPawn[MG];
-                score.eg -= rookInFrontEnemyPassedPawn[EG];
-            }
-
-            else{
-                score.mg -= rookBehindEnemyPassedPawn[MG];
-                score.eg -= rookBehindEnemyPassedPawn[EG];
-            }
-        }
-    }
-
-
-    while(bp){
-        Square s = static_cast<Square>(popLSB(bp));
-        int rank = getRank(s), file = getFile(s);
-
-        // rook and passed pawn
-        U64 rookmask = br & fileMask[file];
-        U64 enemyrook = wr & fileMask[file];
-
-        while(rookmask){
-            Square rooksq = static_cast<Square>(popLSB(rookmask));
-
-            if(getRank(rooksq) < rank){
-                score.mg -= rookInFrontOwnPassedPawn[MG];
-                score.eg -= rookInFrontOwnPassedPawn[EG];
-            }
-
-            else{
-                score.mg -= rookBehindOwnPassedPawn[MG];
-                score.eg -= rookBehindOwnPassedPawn[EG];
-            }
-        }
-
-
-        while(enemyrook){
-            Square rooksq = static_cast<Square>(popLSB(enemyrook));
-
-            if(getRank(rooksq) < rank){
-                score.mg += rookInFrontEnemyPassedPawn[MG];
-                score.eg += rookInFrontEnemyPassedPawn[EG];
-            }
-
-            else{
-                score.mg += rookBehindEnemyPassedPawn[MG];
-                score.eg += rookBehindEnemyPassedPawn[EG];
-            }
-        }
     }
 }
