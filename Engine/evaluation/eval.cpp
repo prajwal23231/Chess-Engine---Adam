@@ -32,6 +32,7 @@ int Evaluator::evaluate(const Board& board){
     calculateRook(board, score, entry);
     calculateKnightOutpost(board, score, entry);
     calculateMobility(board, score, entry);
+    calculateKingSafety(board, score);
 
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
@@ -277,7 +278,7 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score, PawnEntry
     U64 wpattacks = entry->pawnAttacks[WHITE];
 
     U64 wMobilityArea = ~(wocc | bpattacks);
-    U64 bMobilityArea = ~(bocc | bpattacks);
+    U64 bMobilityArea = ~(bocc | wpattacks);
 
 
     while(wn){
@@ -471,13 +472,13 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* en
             Square bpassed = static_cast<Square>(popLSB(btotalPassed));
 
             if(getRank(bpassed)>rank){
-                score.mg += rookInFrontOwnPassedPawn[MG];
-                score.eg += rookInFrontOwnPassedPawn[EG];
+                score.mg += rookInFrontEnemyPassedPawn[MG];
+                score.eg += rookInFrontEnemyPassedPawn[EG];
             }
 
             else{
-                score.mg += rookBehindOwnPassedPawn[MG];
-                score.eg += rookBehindOwnPassedPawn[EG];
+                score.mg += rookBehindEnemyPassedPawn[MG];
+                score.eg += rookBehindEnemyPassedPawn[EG];
             }
         }
     }
@@ -529,20 +530,6 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* en
         U64 wtotalPassed = entry->passedPawns[WHITE] & rattack;
         U64 btotalPassed = entry->passedPawns[BLACK] & rattack;
 
-        while(wtotalPassed){
-            Square wpassed = static_cast<Square>(popLSB(wtotalPassed));
-
-            if(getRank(wpassed)<rank){
-                score.mg -= rookInFrontOwnPassedPawn[MG];
-                score.eg -= rookInFrontOwnPassedPawn[EG];
-            }
-
-            else{
-                score.mg -= rookBehindOwnPassedPawn[MG];
-                score.eg -= rookBehindOwnPassedPawn[EG];
-            }
-        }
-
         while(btotalPassed){
             Square bpassed = static_cast<Square>(popLSB(btotalPassed));
 
@@ -554,6 +541,20 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* en
             else{
                 score.mg -= rookBehindOwnPassedPawn[MG];
                 score.eg -= rookBehindOwnPassedPawn[EG];
+            }
+        }
+
+        while(wtotalPassed){
+            Square wpassed = static_cast<Square>(popLSB(wtotalPassed));
+
+            if(getRank(wpassed)<rank){
+                score.mg -= rookInFrontEnemyPassedPawn[MG];
+                score.eg -= rookInFrontEnemyPassedPawn[EG];
+            }
+
+            else{
+                score.mg -= rookBehindEnemyPassedPawn[MG];
+                score.eg -= rookBehindEnemyPassedPawn[EG];
             }
         }
     }
@@ -584,4 +585,23 @@ void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, Pawn
         score.mg -= knightOutpost[MG];
         score.eg -= knightOutpost[EG];
     }
+}
+
+
+
+void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
+    if(board.getGamePhase() < 6) return ;
+
+    Square wKingSq = board.getKingSquare(WHITE);
+    Square bKingSq = board.getKingSquare(BLACK);
+
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+
+
+
+    // White king safety
+    int wFile = getFile(wKingSq);
+
+    
 }

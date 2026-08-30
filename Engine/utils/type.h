@@ -161,6 +161,29 @@ constexpr int BACKWARD_PAWN_SEMI_OPEN_EG = 24;
 
 constexpr int knightOutpost[2] = {18, 12};
 
+constexpr int PAWN_SHIELD_MISSING = 25; // Penalty for each missing shield pawn (MG)
+constexpr int PAWN_SHIELD_STEPPED = 10; // Penalty if shield pawn moved from rank 2 to rank 3/4
+constexpr int OPEN_FILE_NEAR_KING = 20; // Penalty for open file next to the King
+
+constexpr int KNIGHT_ATTACK_WEIGHT = 2;
+constexpr int BISHOP_ATTACK_WEIGHT = 2;
+constexpr int ROOK_ATTACK_WEIGHT   = 3;
+constexpr int QUEEN_ATTACK_WEIGHT  = 5;
+
+// Non-linear king attack danger lookup table (indexed by total attack units 0..99)
+constexpr int kingDangerTable[100] = {
+      0,   0,   5,  10,  20,  35,  55,  80, 110, 145,
+    185, 230, 280, 335, 395, 460, 530, 605, 685, 770,
+    860, 955, 1050, 1150, 1250, 1350, 1450, 1550, 1650, 1750,
+    1850, 1950, 2050, 2150, 2250, 2350, 2450, 2550, 2650, 2750,
+    2850, 2950, 3050, 3150, 3250, 3350, 3450, 3550, 3650, 3750,
+    3850, 3950, 4050, 4150, 4250, 4350, 4450, 4550, 4650, 4750,
+    4850, 4950, 5050, 5150, 5250, 5350, 5450, 5550, 5650, 5750,
+    5850, 5950, 6050, 6150, 6250, 6350, 6450, 6550, 6650, 6750,
+    6850, 6950, 7050, 7150, 7250, 7350, 7450, 7550, 7650, 7750,
+    7850, 7950, 8050, 8150, 8250, 8350, 8450, 8550, 8650, 8750
+};
+
 
 constexpr int mg_value[6] = { 82, 337, 477, 365, 1025, 0};
 constexpr int eg_value[6] = { 94, 281, 512, 297,  936, 0};

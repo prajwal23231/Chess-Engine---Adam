@@ -32,4 +32,5 @@ private:
 	void calculateRook(const Board &board, EvalInfo &info, PawnEntry* entry);
 	void calculateKnightOutpost(const Board &board, EvalInfo &score,PawnEntry* entry);
 	void calculatePawns(const Board &board, EvalInfo &score);
+	void calculateKingSafety(const Board& board, EvalInfo & score);
 };
