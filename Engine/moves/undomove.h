@@ -8,4 +8,6 @@ struct UndoInfo{
     U64 zobristKey;
     U64 pawnKey;
     int gamePhase;
+    int mgScore;
+    int egScore;
 };

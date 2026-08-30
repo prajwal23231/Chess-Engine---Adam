@@ -44,6 +44,9 @@ void Board::clear(){
     zobristKey = 0;
     pawnKey = 0;
     gamePhase = 0;
+
+    mgScore = 0;
+    egScore = 0;
 }
 
 Square Board::parseEnPassantSquare(char file,int rank,Color tomove){
@@ -268,12 +271,15 @@ bool Board::loadFEN(const string &fen){
 void Board::rebuildBitboards(){
     bitboards.fill(0);
     gamePhase = 0;
+    mgScore = 0;
+    egScore = 0;
 
     for(int i=0 ; i<BOARD_SIZE ; i++){
         Piece p = board[i];
         if(p==EMPTY) continue;
         setBit(bitboards[p], static_cast<Square>(i));
         gamePhase += piecePhase[p];
+        addPieceScore(p, static_cast<Square>(i));
     }
 }
 
@@ -349,7 +355,9 @@ bool Board::makeMove(const Move &move){
         halfmoveClock,
         zobristKey,
         pawnKey,
-        gamePhase
+        gamePhase,
+        mgScore,
+        egScore
     };
 
     Piece moved = move.getMovedPiece();
@@ -377,6 +385,7 @@ bool Board::makeMove(const Move &move){
     board[from] = EMPTY;
     clearBit(bitboards[moved], from);
     zobristKey ^= Zobrist::getPieceKeys(moved, from);
+    removePieceScore(moved,from);
 
     // placing moved piece to dest
     setBit(occupancies[BOTH], to);
@@ -393,12 +402,14 @@ bool Board::makeMove(const Move &move){
         board[to] = promotionPiece;
         zobristKey ^= Zobrist::getPieceKeys(promotionPiece, to);
         gamePhase += piecePhase[promotionPiece];
+        addPieceScore(promotionPiece,to);
     }
 
     else{
         setBit(bitboards[moved], to);
         board[to] = moved;
         zobristKey ^= Zobrist::getPieceKeys(moved, to);
+        addPieceScore(moved,to);
 
         if(moved == WP || moved == BP){
             pawnKey ^= Zobrist::getPawnKeys(sideToMove, to);
@@ -418,6 +429,7 @@ bool Board::makeMove(const Move &move){
         zobristKey ^= Zobrist::getPieceKeys(captured, s);
 
         pawnKey ^= Zobrist::getPawnKeys(opp, s);
+        removePieceScore(captured,s);
     }
 
     else if(move.isCapture()){
@@ -428,7 +440,9 @@ bool Board::makeMove(const Move &move){
         if(captured == WP || captured == BP){
             pawnKey ^= Zobrist::getPawnKeys(opp, to);
         }
+
         gamePhase -= piecePhase[captured];
+        removePieceScore(captured,to);
     }
 
 
@@ -489,6 +503,9 @@ bool Board::makeMove(const Move &move){
         setBit(occupancies[BOTH], dest);
         zobristKey ^= Zobrist::getPieceKeys(p, source);
         zobristKey ^= Zobrist::getPieceKeys(p, dest);
+
+        removePieceScore(p,source);
+        addPieceScore(p,dest);
     }
 
 
@@ -524,6 +541,8 @@ void Board::undoMove(const Move &move){
     zobristKey = data.zobristKey;
     pawnKey = data.pawnKey;
     gamePhase = data.gamePhase;
+    mgScore = data.mgScore;
+    egScore = data.egScore;
 
     Piece moved = move.getMovedPiece();
     Piece captured = move.getCapturedPiece();

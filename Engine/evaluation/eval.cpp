@@ -18,11 +18,9 @@ namespace {
 
 
 int Evaluator::evaluate(const Board& board){
-    EvalInfo score = {};
+    EvalInfo score = {board.getMgScore(), board.getEgScore()};
     int phase = std::clamp(board.getGamePhase(), 0, TOTAL_PHASE);
 
-    calculateMaterial(board, score);
-    calculatePST(board, score);
     calculateBishopPair(board, score);
     calculatePawns(board, score);
 

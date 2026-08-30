@@ -38,6 +38,9 @@ public:
 	inline U64 getPawnKey() const{ return pawnKey; };
 	inline int getGamePhase() const { return gamePhase; }
 
+	inline int getMgScore() const { return mgScore; }
+	inline int getEgScore() const { return egScore; }
+
 private:
 	std::array<U64, NUM_PIECES> bitboards;
 	std::array<Piece, BOARD_SIZE> board;
@@ -57,13 +60,19 @@ private:
 
 	U64 zobristKey;
 	U64 pawnKey;
+
 	int gamePhase = TOTAL_PHASE;
+	int mgScore = 0;
+	int egScore = 0;
 
 	Square parseEnPassantSquare(char pos, int rank, Color tomove);
 	void rebuildBitboards();
 	static char pieceToChar(Piece p);
 
 	void updateOccupancies();
+
+	inline void addPieceScore(Piece p, Square sq);
+	inline void removePieceScore(Piece p, Square sq);
 };
 
 inline bool Board::isSquareAttacked(Square square, Color bySide) const {
@@ -95,4 +104,36 @@ inline bool Board::isSquareAttacked(Square square, Color bySide) const {
 		return true;
 
 	return false;
+}
+
+
+
+inline void Board::addPieceScore(Piece p,Square sq){
+	int pieceType = (p<BP ? p : p-BP);
+
+	if(p<BP){
+		mgScore += mg_value[pieceType] + pst[WHITE][MG][pieceType][sq];
+		egScore += eg_value[pieceType] + pst[WHITE][EG][pieceType][sq];
+	}
+
+	else{
+		mgScore -= mg_value[pieceType] + pst[BLACK][MG][pieceType][sq];
+		egScore -= eg_value[pieceType] + pst[BLACK][EG][pieceType][sq];
+	}
+}
+
+
+
+inline void Board::removePieceScore(Piece p,Square sq){
+	int pieceType = (p<BP ? p : p-BP);
+
+	if(p<BP){
+		mgScore -= mg_value[pieceType] + pst[WHITE][MG][pieceType][sq];
+		egScore -= eg_value[pieceType] + pst[WHITE][EG][pieceType][sq];
+	}
+
+	else{
+		mgScore += mg_value[pieceType] + pst[BLACK][MG][pieceType][sq];
+		egScore += eg_value[pieceType] + pst[BLACK][EG][pieceType][sq];
+	}
 }
