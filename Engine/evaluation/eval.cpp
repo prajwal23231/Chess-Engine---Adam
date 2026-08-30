@@ -597,11 +597,222 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
     U64 wp = board.getBitboard(WP);
     U64 bp = board.getBitboard(BP);
-
+    U64 occ = board.getOccupancy(BOTH);
 
 
     // White king safety
-    int wFile = getFile(wKingSq);
+    int wFile = clamp(getFile(wKingSq),1,6);
+    int wShieldPenalty = 0;
 
+    for(int f = wFile-1; f <= wFile+1; f++){
+        U64 pawnOnFile = wp & fileMask[f];
+
+        if(!pawnOnFile){
+            wShieldPenalty += PAWN_SHIELD_MISSING;
+
+            if(!(bp & fileMask[f])){
+                wShieldPenalty += OPEN_FILE_NEAR_KING;
+            }
+
+            else{
+                wShieldPenalty += OPEN_FILE_NEAR_KING/2;
+            }
+        }
+
+
+        else{
+            int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
+
+            if(lowestRank==2){
+                wShieldPenalty += PAWN_SHIELD_STEPPED;
+            }
+
+            else if(lowestRank>=3){
+                wShieldPenalty += PAWN_SHIELD_MISSING;
+            }
+        }
+    }
+
+
+
+    // Black king safety
+    int bFile = clamp(getFile(bKingSq),1,6);
+    int bShieldPenalty = 0;
+
+    for(int f = bFile-1; f <= bFile+1; f++){
+        U64 pawnOnFile = bp & fileMask[f];
+
+        if(!pawnOnFile){
+            bShieldPenalty += PAWN_SHIELD_MISSING;
+
+            if(!(wp & fileMask[f])){
+                bShieldPenalty += OPEN_FILE_NEAR_KING;
+            }
+
+            else{
+                bShieldPenalty += OPEN_FILE_NEAR_KING/2;
+            }
+        }
+
+
+        else{
+            int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
+
+            if(lowestRank==5){
+                bShieldPenalty += PAWN_SHIELD_STEPPED;
+            }
+
+            else if(lowestRank<=4){
+                bShieldPenalty += PAWN_SHIELD_MISSING;
+            }
+        }
+    }
+
+
+
+    U64 wKingZone = attacks.getKingAttack(wKingSq) | (1ULL<<wKingSq);
+    wKingZone |= wKingZone<<8;
+
+    U64 bKingZone = attacks.getKingAttack(bKingSq) | (1ULL<<bKingSq);
+    bKingZone |= bKingZone>>8;
+
+
+
+    int bAttackUnits = 0;
+    int bAttackerCount = 0;
+    int bDangerScore = 0;
+
+    U64 bn = board.getBitboard(BN);
+
+    while(bn){
+        Square sq = static_cast<Square>(popLSB(bn));
+        U64 hits = attacks.getKnightAttack(sq) & wKingZone;
+
+        if(hits){
+            bAttackUnits += popCount(hits) * KNIGHT_ATTACK_WEIGHT;
+            bAttackerCount++;
+        }
+    }
+
+
+    U64 bb = board.getBitboard(BB);
+
+    while(bb){
+        Square sq = static_cast<Square>(popLSB(bb));
+        U64 hits = attacks.getBishopAttack(sq,occ) & wKingZone;
+
+        if(hits){
+            bAttackUnits += popCount(hits) * BISHOP_ATTACK_WEIGHT;
+            bAttackerCount++;
+        }
+    }
+
+
+    U64 br = board.getBitboard(BR);
+
+    while(br){
+        Square sq = static_cast<Square>(popLSB(br));
+        U64 hits = attacks.getRookAttack(sq,occ) & wKingZone;
+
+        if(hits){
+            bAttackUnits += popCount(hits) * ROOK_ATTACK_WEIGHT;
+            bAttackerCount++;
+        }
+    }
+
+
+    U64 bq = board.getBitboard(BQ);
+
+    while(bq){
+        Square sq = static_cast<Square>(popLSB(bq));
+        U64 hits = attacks.getQueenAttack(sq,occ) & wKingZone;
+
+        if(hits){
+            bAttackUnits += popCount(hits) * QUEEN_ATTACK_WEIGHT;
+            bAttackerCount++;
+        }
+    }
+
+
+    if(bAttackerCount >= 2){
+        bDangerScore = kingDangerTable[min(bAttackUnits,99)];
+
+        if(!board.getBitboard(BQ)){
+            bDangerScore /= 2;
+        }
+    }
+
+
+
+
+    int wAttackUnits = 0;
+    int wAttackerCount = 0;
+    int wDangerScore = 0;
+
+    U64 wn = board.getBitboard(WN);
+
+    while(wn){
+        Square sq = static_cast<Square>(popLSB(wn));
+        U64 hits = attacks.getKnightAttack(sq) & bKingZone;
+
+        if(hits){
+            wAttackUnits += popCount(hits) * KNIGHT_ATTACK_WEIGHT;
+            wAttackerCount++;
+        }
+    }
+
+
+    U64 wb = board.getBitboard(WB);
+
+    while(wb){
+        Square sq = static_cast<Square>(popLSB(wb));
+        U64 hits = attacks.getBishopAttack(sq,occ) & bKingZone;
+
+        if(hits){
+            wAttackUnits += popCount(hits) * BISHOP_ATTACK_WEIGHT;
+            wAttackerCount++;
+        }
+    }
+
+
+    U64 wr = board.getBitboard(WR);
+
+    while(wr){
+        Square sq = static_cast<Square>(popLSB(wr));
+        U64 hits = attacks.getRookAttack(sq,occ) & bKingZone;
+
+        if(hits){
+            wAttackUnits += popCount(hits) * ROOK_ATTACK_WEIGHT;
+            wAttackerCount++;
+        }
+    }
+
+
+    U64 wq = board.getBitboard(WQ);
+
+    while(bq){
+        Square sq = static_cast<Square>(popLSB(wq));
+        U64 hits = attacks.getQueenAttack(sq,occ) & bKingZone;
+
+        if(hits){
+            wAttackUnits += popCount(hits) * QUEEN_ATTACK_WEIGHT;
+            wAttackerCount++;
+        }
+    }
+
+
+    if(wAttackerCount >= 2){
+        wDangerScore = kingDangerTable[min(bAttackUnits,99)];
+        
+        if(!board.getBitboard(WQ)){
+            wDangerScore /= 2;
+        }
+    }
     
+
+    score.mg -= wShieldPenalty;
+    score.mg += bShieldPenalty;
+
+    score.mg -= bDangerScore;
+    score.mg += wDangerScore;
 }
