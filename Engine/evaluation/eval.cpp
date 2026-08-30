@@ -656,13 +656,14 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
 
         else{
-            int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
+            int highestRank = getRank(static_cast<Square>(63 - __builtin_clzll(pawnOnFile)));
 
-            if(lowestRank==5){
+
+            if(highestRank==5){
                 bShieldPenalty += PAWN_SHIELD_STEPPED;
             }
 
-            else if(lowestRank<=4){
+            else if(highestRank<=4){
                 bShieldPenalty += PAWN_SHIELD_MISSING;
             }
         }
@@ -790,7 +791,7 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
     U64 wq = board.getBitboard(WQ);
 
-    while(bq){
+    while(wq){
         Square sq = static_cast<Square>(popLSB(wq));
         U64 hits = attacks.getQueenAttack(sq,occ) & bKingZone;
 
@@ -802,13 +803,13 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
 
     if(wAttackerCount >= 2){
-        wDangerScore = kingDangerTable[min(bAttackUnits,99)];
+        wDangerScore = kingDangerTable[min(wAttackUnits,99)];
         
         if(!board.getBitboard(WQ)){
             wDangerScore /= 2;
         }
     }
-    
+
 
     score.mg -= wShieldPenalty;
     score.mg += bShieldPenalty;
