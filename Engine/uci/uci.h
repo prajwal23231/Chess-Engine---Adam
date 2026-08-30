@@ -6,7 +6,7 @@
 #include "moves/move.h"
 #include <string>
 #include <sstream>
-
+#include "evaluation/eval.h"
 
 struct ParsedMove{
     Square from;
@@ -16,13 +16,14 @@ struct ParsedMove{
 
 class UCI{
 public:
-    UCI(Board& board, MoveGenerator &movegen);
+    UCI(Board& board, MoveGenerator &movegen, Evaluator &evaluator);
     void loop();
 
 private:
     Board& board;
     MoveGenerator& movegen;
     Perft perft;
+    Evaluator evaluator;
 
     void parseCommand(const std::string &command);
     void handleUCI();
@@ -32,6 +33,7 @@ private:
     void handlePosition(std::istringstream &iss);
     void handlePerft(std::istringstream &iss);
     void handleDivide(std::istringstream &iss);
+    void handleEval();
 
     // helper
     bool parseUCIMove(const std::string& pos, ParsedMove& move);

@@ -5,7 +5,7 @@
 using namespace std;
 
 
-UCI::UCI(Board& board, MoveGenerator& movegen) : movegen(movegen), board(board), perft(board,movegen){
+UCI::UCI(Board& board, MoveGenerator& movegen, Evaluator& evaluator) : movegen(movegen), board(board), perft(board,movegen), evaluator(evaluator){
 }
 
 
@@ -49,6 +49,10 @@ void UCI::parseCommand(const string& command){
 
     else if(cmd=="divide"){
         handleDivide(iss);
+    }
+
+    else if(cmd=="eval"){
+        handleEval();
     }
 
     else{
@@ -223,4 +227,10 @@ void UCI::handleDivide(istringstream& iss){
     }
 
     perft.divide(depth);
+}
+
+
+void UCI::handleEval(){
+    int score = evaluator.evaluate(board);
+    cout<<"Eval: "<<score<<" cp\n";
 }

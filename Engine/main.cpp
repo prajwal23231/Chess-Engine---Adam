@@ -14,7 +14,8 @@ int main() {
 
     Board board;
     MoveGenerator movegen(board);
+    Evaluator evaluator;
 
-    UCI uci(board, movegen);
+    UCI uci(board, movegen, evaluator);
     uci.loop();
 }
