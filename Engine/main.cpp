@@ -16,6 +16,8 @@ int main() {
     MoveGenerator movegen(board);
     Evaluator evaluator;
 
-    UCI uci(board, movegen, evaluator);
+    Search search(board,movegen,evaluator);
+
+    UCI uci(board, movegen, evaluator,search);
     uci.loop();
 }

@@ -1,11 +1,12 @@
 #include "uci.h"
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
 
-UCI::UCI(Board& board, MoveGenerator& movegen, Evaluator& evaluator) : movegen(movegen), board(board), perft(board,movegen), evaluator(evaluator){
+UCI::UCI(Board& board, MoveGenerator& movegen, Evaluator& evaluator, Search& search) : movegen(movegen), board(board), perft(board,movegen), evaluator(evaluator), search(search){
 }
 
 
@@ -40,10 +41,8 @@ void UCI::parseCommand(const string& command){
     }
 
     else if(cmd=="move"){
-        if(playMoves(iss)) board.print();
-
-        else{
-            cout<<"Invalid move\n";
+        if(!playMoves(iss)){
+            std::cout<<"Invalid move\n";
         }
     }
 
@@ -55,8 +54,16 @@ void UCI::parseCommand(const string& command){
         handleEval();
     }
 
+    else if(cmd=="go"){
+        handleGo(iss);
+    }
+
+    else if(cmd=="d"){
+        handleDisplay();
+    }
+
     else{
-        cout<<"Unknown Command : "<<cmd<<"\n";
+        std::cout<<"Unknown Command : "<<cmd<<"\n";
     }
 }
 
@@ -122,13 +129,13 @@ void UCI::loop() {
 
 
 void UCI::handleUCI(){
-    cout<<"id name ADAM\n";
-    cout<<"id author Prajwal\n";
-    cout<<"uciok\n";
+    std::cout<<"id name ADAM\n";
+    std::cout<<"id author Prajwal\n";
+    std::cout<<"uciok\n";
 }
 
 void UCI::handleIsReady(){
-    cout<<"readyok\n";
+    std::cout<<"readyok\n";
 }
 
 void UCI::handleQuit(){
@@ -161,13 +168,13 @@ void UCI::handlePosition(istringstream &iss){
         string fen = placement + " " + tomove + " " + castling + " " + enpassant + " " + halfmove + " " + fullmove;
 
         if(!board.loadFEN(fen)){
-            cout<<"Unknown position Command\n";
+            std::cout<<"Unknown position Command\n";
             return ;
         }
     }
 
     else {
-        cout<<"Unknown position Command\n";
+        std::cout<<"Unknown position Command\n";
     }
 
 
@@ -177,18 +184,16 @@ void UCI::handlePosition(istringstream &iss){
     if(iss>>word){
         if(word == "moves"){
             if(!playMoves(iss)){
-                cout<<"Invalid move\n";
+                std::cout<<"Invalid move\n";
                 return ;
             }
         }
 
         else{
-            cout<<"Invalid command\n";
+            std::cout<<"Invalid command\n";
             return ;
         }
     }
-
-    board.print();
 }
 
 
@@ -232,5 +237,75 @@ void UCI::handleDivide(istringstream& iss){
 
 void UCI::handleEval(){
     int score = evaluator.evaluate(board);
-    cout<<"Eval: "<<score<<" cp\n";
+    std::cout<<"Eval: "<<score<<" cp\n";
+}
+
+
+
+void UCI::handleGo(istringstream& iss){
+    string token;
+    int depth = 64;
+    long long wtime = 0, btime = 0, winc = 0, binc = 0;
+    long long movetime = 0;
+    int movestogo = 0;
+    bool infinite = false;
+
+    while(iss>>token){
+        if(token == "depth"){
+            iss>>depth;
+        }
+        else if(token=="movetime"){
+            iss>>movetime;
+        }
+        else if (token == "wtime") {
+            iss >> wtime;
+        }
+        else if (token == "btime") {
+            iss >> btime;
+        }
+        else if (token == "winc") {
+            iss >> winc;
+        }
+        else if (token == "binc") {
+            iss >> binc;
+        }
+        else if (token == "movestogo") {
+            iss >> movestogo;
+        }
+        else if(token=="infinite"){
+            infinite = true;
+            depth = 64;
+        }
+    }
+
+    if(movetime>0){
+        search.setMoveTime(movetime);
+    }
+
+    else if(!infinite){
+        Color movingSide = board.getMovingSide();
+        long long myTime = (movingSide == WHITE ? wtime : btime);
+        long long myInc = (movingSide == WHITE ? winc : binc);
+
+        if(myTime > 0){
+            int movesLeft = (movestogo>0) ? min(movestogo,50) : 30;
+
+            long long allocatedTime = (myTime/movesLeft) + (myInc * 3/4);
+
+            if(allocatedTime > myTime - 50){
+                allocatedTime = max(10LL, myTime-50);
+            }
+
+            if(allocatedTime < 10){
+                allocatedTime = 10;
+            }
+
+            search.setMoveTime(allocatedTime);
+        }
+    }
+
+    Move bestMove = search.findBestMove(depth);
+    std::cout << "bestmove " << moveToUCI(bestMove) << "\n";
+
+    search.resetMoveTime();
 }

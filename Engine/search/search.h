@@ -12,7 +12,6 @@ constexpr int MATE_SCORE     = 100000;
 constexpr int MATE_THRESHOLD = MATE_SCORE - MAX_PLYS;
 
 using Clock = std::chrono::high_resolution_clock;
-constexpr long long timeLimitMs = 5000;
 
 class Search{
 public:
@@ -20,12 +19,21 @@ public:
 
     Move findBestMove(int depth);
 
+    inline void setMoveTime(long long time){
+        timeLimitMs = time;
+    }
+
+    inline void resetMoveTime(){
+        timeLimitMs = 5000;
+    }
+
 private:
     Board& board;
     MoveGenerator& movegen;
     Evaluator evaluator;
 
     U64 nodes=0;
+    long long timeLimitMs = 5000;
 
     int negamax(int alpha, int beta, int depth, int ply);
     int quiescence(int alpha, int beta, int ply);
