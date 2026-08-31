@@ -14,9 +14,7 @@ namespace {
 }
 
 
-
 Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator) : board(board), movegen(movegen), evaluator(evaluator){
-    nodes=0;
 }
 
 
@@ -150,4 +148,61 @@ int Search::negamax(int alpha, int beta, int depth, int ply){
     }
 
     return alpha;
+}
+
+
+
+Move Search::findBestMove(int depth){
+    nodes=0;
+    auto start = Clock::now();
+
+    Move bestMove;
+    Move moves[MAX_MOVES];
+    int scores[MAX_MOVES];
+    int count = movegen.generateLegalMoves(moves);
+
+    if(count == 0) return bestMove;
+    else if(count == 1) return moves[0];
+
+    for(int d = 1; d <= depth; d++){
+        int alpha = -INFINITY_SCORE, beta = INFINITY_SCORE;
+
+        orderMoves(moves, scores, count);
+
+        if(d > 1){
+            for(int i = 0; i < count; i++){
+                if(moves[i].getValue() == bestMove.getValue()){
+                    scores[i] = 1000000;
+                    break;
+                }
+            }
+        }
+        
+        for(int i=0; i<count; i++){
+            int idx = i;
+
+            for(int j=i+1; j<count; j++){
+                if(scores[idx]<scores[j]){
+                    idx=j;
+                }
+            }
+
+            swap(scores[i],scores[idx]);
+            swap(moves[i],moves[idx]);
+
+            board.makeMove(moves[i]);
+            int score = -negamax(-beta, -alpha, d-1, 1);
+
+            board.undoMove(moves[i]);
+
+            if(score > alpha){
+                alpha = score;
+                bestMove = moves[i];
+            }
+
+            if(timeLimitReached(start)) return bestMove;
+        }
+    }
+
+    return bestMove;
 }

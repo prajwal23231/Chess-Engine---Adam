@@ -4,12 +4,15 @@
 #include "moves/movegen.h"
 #include "moves/move.h"
 #include "evaluation/eval.h"
+#include <chrono>
 
 
 constexpr int INFINITY_SCORE = 300000;
 constexpr int MATE_SCORE     = 100000;
 constexpr int MATE_THRESHOLD = MATE_SCORE - MAX_PLYS;
 
+using Clock = std::chrono::high_resolution_clock;
+constexpr long long timeLimitMs = 5000;
 
 class Search{
 public:
@@ -30,4 +33,8 @@ private:
     // Move ordering
     int scoreMove(const Move& move);
     void orderMoves(Move* moves, int* scores, int count);
+
+    inline bool timeLimitReached(auto start) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count() >= timeLimitMs;
+    }
 };
