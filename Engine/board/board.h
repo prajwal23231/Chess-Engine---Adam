@@ -27,7 +27,16 @@ public:
 
 	inline int getHalfMoveClock() const { return halfmoveClock; }
 	inline int getFullMoveNumber() const { return fullmoveNumber; }
-	inline Square getKingSquare(Color c) const { return kingSquare[c]; }
+	inline Square getKingSquare(Color c) const {
+		U64 k = bitboards[c == WHITE ? WK : BK];
+		return k ? static_cast<Square>(Bitboard::lsb(k)) : NO_SQUARE;
+	}
+	inline bool isRepetition() const {
+		for(int i = ply - 2; i >= 0 && i >= ply - halfmoveClock; i -= 2){
+			if(history[i].zobristKey == zobristKey) return true;
+		}
+		return false;
+	}
 
 	bool makeMove(const Move &move);
 	void undoMove(const Move &move);

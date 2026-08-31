@@ -1,4 +1,8 @@
 #include "search.h"
+#include "utils/bitboard_utilities.h"
+#include <iostream>
+#include <algorithm>
+
 using namespace std;
 
 namespace {
@@ -13,194 +17,261 @@ namespace {
     };
 }
 
-
-Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator) : board(board), movegen(movegen), evaluator(evaluator){
+Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator) 
+    : board(board), movegen(movegen), evaluator(evaluator) {
+    memset(killerMoves, 0, sizeof(killerMoves));
+    memset(historyTable, 0, sizeof(historyTable));
 }
 
+int Search::scoreMove(const Move& move, int ply) {
+    if (move.isPromotion()) {
+        Piece promoted = move.getPromotion();
+        int promoType = (promoted >= BP ? promoted - BP : promoted);
+        return 200000 + mvvPieceValues[promoType] * 10;
+    }
 
-int Search::scoreMove(const Move& move){
-    int score=0;
-    constexpr int promotionBase = 10000;
-
-    if(move.isCapture()){
+    if (move.isCapture()) {
         Piece moved = move.getMovedPiece();
         Piece captured = move.getCapturedPiece();
 
         int attackerType = (moved >= BP ? moved - BP : moved);
-        int victimeType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
+        int victimType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
 
-        score = mvvPieceValues[victimeType] * 10 - mvvPieceValues[attackerType] + 10000;
+        return 100000 + (mvvPieceValues[victimType] * 10 - mvvPieceValues[attackerType]);
     }
 
-    if(move.isPromotion()){
-        Piece promoted = move.getPromotion();
-        int promotionVal = 0;
-
-        int promoType = (promoted >= BP ? promoted - BP : promoted);
-        promotionVal = mvvPieceValues[promoType]*10;
-
-        score += promotionVal;
-
-        if(!move.isCapture()) score+=promotionBase;
+    // Killer moves
+    if (ply < MAX_PLYS) {
+        if (killerMoves[0][ply].getValue() == move.getValue()) return 90000;
+        if (killerMoves[1][ply].getValue() == move.getValue()) return 80000;
     }
 
-    return score;
+    // History heuristic
+    Color side = board.getMovingSide();
+    return min(historyTable[side][move.getFrom()][move.getTo()], 70000);
 }
 
-
-
-void Search::orderMoves(Move* moves,int* scores,int count){
-    for(int i=0; i<count; i++){
-        scores[i] = scoreMove(moves[i]);
+void Search::orderMoves(Move* moves, int* scores, int count, int ply) {
+    for (int i = 0; i < count; i++) {
+        scores[i] = scoreMove(moves[i], ply);
     }
 }
 
-
-
-int Search::quiescence(int alpha, int beta, int ply){
+int Search::quiescence(int alpha, int beta, int ply) {
+    if ((nodes & 2047) == 0 && isTimeUp()) return 0;
     nodes++;
-    int standPat = evaluator.evaluate(board);
 
-    constexpr int BIG_DELTA = 975;
+    Color movingSide = board.getMovingSide();
+    Square kingSq = board.getKingSquare(movingSide);
+    Color opp = (movingSide == WHITE ? BLACK : WHITE);
+    bool inCheck = board.isSquareAttacked(kingSq, opp);
 
-    if(standPat >= beta) return beta;
-    if(standPat > alpha) alpha = standPat;
+    int standPat = 0;
+    if (!inCheck) {
+        standPat = evaluator.evaluate(board);
+        if (standPat >= beta) return beta;
+        if (standPat > alpha) alpha = standPat;
+    }
 
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
     int count = movegen.generateLegalMoves(moves);
-    orderMoves(moves, scores, count);
 
+    if (count == 0) {
+        if (inCheck) return -MATE_SCORE + ply;
+        return 0; // Stalemate
+    }
 
-    for(int i=0; i<count; i++){
-        int idx = i;
+    orderMoves(moves, scores, count, ply);
 
-        for(int j=i+1; j<count; j++){
-            if(scores[idx]<scores[j]){
-                idx=j;
+    for (int i = 0; i < count; i++) {
+        // Pick move with best score
+        int bestIdx = i;
+        for (int j = i + 1; j < count; j++) {
+            if (scores[j] > scores[bestIdx]) {
+                bestIdx = j;
             }
         }
+        swap(scores[i], scores[bestIdx]);
+        swap(moves[i], moves[bestIdx]);
 
-        swap(scores[i],scores[idx]);
-        swap(moves[i],moves[idx]);
+        if (!inCheck) {
+            // Only search captures and promotions in quiescence when not in check
+            if (!(moves[i].isCapture() || moves[i].isPromotion())) continue;
 
-        if(!(moves[i].isCapture() || moves[i].isPromotion())) continue;
-        if (standPat < alpha - BIG_DELTA && !moves[i].isPromotion()) continue;
+            // Delta pruning
+            if (standPat < alpha - 975 && !moves[i].isPromotion()) continue;
+        }
 
         board.makeMove(moves[i]);
-        int score = -quiescence(-beta, -alpha, ply+1);
-
+        int score = -quiescence(-beta, -alpha, ply + 1);
         board.undoMove(moves[i]);
 
-        if(score >= beta) return beta;
-        if(score > alpha) alpha = score;
+        if (stopped) return 0;
+
+        if (score >= beta) return beta;
+        if (score > alpha) alpha = score;
     }
 
     return alpha;
 }
 
-
-
-
-int Search::negamax(int alpha, int beta, int depth, int ply){
-    if(depth<=0){
+int Search::negamax(int alpha, int beta, int depth, int ply) {
+    if (depth <= 0) {
         return quiescence(alpha, beta, ply);
     }
-    
+
+    if ((nodes & 2047) == 0 && isTimeUp()) return 0;
     nodes++;
 
-    if(board.getHalfMoveClock() >= 100) return 0;
+    // Draw detection (50-move rule and 3-fold repetition)
+    if (ply > 0 && (board.getHalfMoveClock() >= 100 || board.isRepetition())) {
+        return 0;
+    }
+
+    Color movingSide = board.getMovingSide();
+    Square kingSq = board.getKingSquare(movingSide);
+    Color opp = (movingSide == WHITE ? BLACK : WHITE);
+    bool inCheck = board.isSquareAttacked(kingSq, opp);
+
+    // Check extension
+    if (inCheck) {
+        depth++;
+    }
 
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
     int count = movegen.generateLegalMoves(moves);
 
-    if(count == 0){
-        Color movingSide = board.getMovingSide();
-        Square kingSq = board.getKingSquare(movingSide);
-        Color opp = (movingSide == WHITE ? BLACK : WHITE);
-
-        if(board.isSquareAttacked(kingSq, opp)) return -MATE_SCORE+ply;
-        else return 0;
+    if (count == 0) {
+        if (inCheck) return -MATE_SCORE + ply;
+        return 0; // Stalemate
     }
 
-    orderMoves(moves, scores, count);
+    orderMoves(moves, scores, count, ply);
 
-    for(int i=0; i<count; i++){
-        int idx = i;
-
-        for(int j=i+1; j<count; j++){
-            if(scores[idx]<scores[j]){
-                idx=j;
+    int movesSearched = 0;
+    for (int i = 0; i < count; i++) {
+        // Pick best scored move
+        int bestIdx = i;
+        for (int j = i + 1; j < count; j++) {
+            if (scores[j] > scores[bestIdx]) {
+                bestIdx = j;
             }
         }
-
-        swap(scores[i],scores[idx]);
-        swap(moves[i],moves[idx]);
+        swap(scores[i], scores[bestIdx]);
+        swap(moves[i], moves[bestIdx]);
 
         board.makeMove(moves[i]);
-        int score = -negamax(-beta, -alpha, depth-1, ply+1);
-
+        int score = -negamax(-beta, -alpha, depth - 1, ply + 1);
         board.undoMove(moves[i]);
 
-        if(score >= beta) return beta;
-        if(score > alpha) alpha = score;
+        if (stopped) return 0;
+
+        movesSearched++;
+
+        if (score >= beta) {
+            // Beta cutoff: update killer moves and history heuristic for quiet moves
+            if (!moves[i].isCapture() && !moves[i].isPromotion()) {
+                if (ply < MAX_PLYS) {
+                    killerMoves[1][ply] = killerMoves[0][ply];
+                    killerMoves[0][ply] = moves[i];
+                }
+                historyTable[movingSide][moves[i].getFrom()][moves[i].getTo()] += depth * depth;
+            }
+            return beta;
+        }
+
+        if (score > alpha) {
+            alpha = score;
+        }
     }
 
     return alpha;
 }
 
+Move Search::findBestMove(int depth) {
+    nodes = 0;
+    startTime = Clock::now();
+    stopped = false;
 
-
-Move Search::findBestMove(int depth){
-    nodes=0;
-    auto start = Clock::now();
+    memset(killerMoves, 0, sizeof(killerMoves));
+    memset(historyTable, 0, sizeof(historyTable));
 
     Move bestMove;
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
     int count = movegen.generateLegalMoves(moves);
 
-    if(count == 0) return bestMove;
-    else if(count == 1) return moves[0];
+    if (count == 0) return bestMove;
+    if (count == 1) return moves[0];
 
-    for(int d = 1; d <= depth; d++){
+    bestMove = moves[0];
+
+    for (int d = 1; d <= depth; d++) {
+        if (isTimeUp()) break;
+
         int alpha = -INFINITY_SCORE, beta = INFINITY_SCORE;
+        Move currentBest = bestMove;
+        int bestScore = -INFINITY_SCORE;
+        bool completedDepth = true;
 
-        orderMoves(moves, scores, count);
+        orderMoves(moves, scores, count, 0);
 
-        if(d > 1){
-            for(int i = 0; i < count; i++){
-                if(moves[i].getValue() == bestMove.getValue()){
-                    scores[i] = 1000000;
+        // Always search current bestMove from previous iteration first
+        if (d > 1) {
+            for (int i = 0; i < count; i++) {
+                if (moves[i].getValue() == bestMove.getValue()) {
+                    scores[i] = 10000000;
                     break;
                 }
             }
         }
-        
-        for(int i=0; i<count; i++){
-            int idx = i;
 
-            for(int j=i+1; j<count; j++){
-                if(scores[idx]<scores[j]){
-                    idx=j;
+        for (int i = 0; i < count; i++) {
+            int bestIdx = i;
+            for (int j = i + 1; j < count; j++) {
+                if (scores[j] > scores[bestIdx]) {
+                    bestIdx = j;
                 }
             }
-
-            swap(scores[i],scores[idx]);
-            swap(moves[i],moves[idx]);
+            swap(scores[i], scores[bestIdx]);
+            swap(moves[i], moves[bestIdx]);
 
             board.makeMove(moves[i]);
-            int score = -negamax(-beta, -alpha, d-1, 1);
-
+            int score = -negamax(-beta, -alpha, d - 1, 1);
             board.undoMove(moves[i]);
 
-            if(score > alpha){
-                alpha = score;
-                bestMove = moves[i];
+            if (isTimeUp() && d > 1) {
+                completedDepth = false;
+                break;
             }
 
-            if(timeLimitReached(start)) return bestMove;
+            if (score > alpha) {
+                alpha = score;
+                bestScore = score;
+                currentBest = moves[i];
+            }
+        }
+
+        if (completedDepth) {
+            bestMove = currentBest;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
+            U64 nps = elapsed > 0 ? (nodes * 1000) / elapsed : nodes;
+            std::cout << "info depth " << d 
+                      << " score cp " << bestScore 
+                      << " nodes " << nodes 
+                      << " nps " << nps 
+                      << " time " << elapsed 
+                      << " pv " << (string(squareToStr[bestMove.getFrom()]) + string(squareToStr[bestMove.getTo()])) 
+                      << "\n";
+        }
+
+        if (isTimeUp()) break;
+
+        // If found checkmate, stop search early
+        if (bestScore >= MATE_THRESHOLD || bestScore <= -MATE_THRESHOLD) {
+            break;
         }
     }
 

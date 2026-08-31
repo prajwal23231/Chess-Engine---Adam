@@ -29,7 +29,7 @@ void UCI::parseCommand(const string& command){
     }
 
     else if(cmd=="ucinewgame"){
-        newgame();
+        handleUCINewGame();
     }
 
     else if(cmd=="position"){
@@ -60,6 +60,18 @@ void UCI::parseCommand(const string& command){
 
     else if(cmd=="d"){
         handleDisplay();
+    }
+
+    else if(cmd=="setoption"){
+        handleSetOption(iss);
+    }
+
+    else if(cmd=="stop"){
+        handleStop();
+    }
+
+    else if(cmd=="ponderhit"){
+        handlePonderHit();
     }
 
     else{
@@ -131,6 +143,14 @@ void UCI::loop() {
 void UCI::handleUCI(){
     std::cout<<"id name ADAM\n";
     std::cout<<"id author Prajwal\n";
+    std::cout<<"option name Hash type spin default 64 min 1 max 1048576\n";
+    std::cout<<"option name Threads type spin default 1 min 1 max 512\n";
+    std::cout<<"option name Move Overhead type spin default 100 min 0 max 5000\n";
+    std::cout<<"option name Clear Hash type button\n";
+    std::cout<<"option name Ponder type check default false\n";
+    std::cout<<"option name SyzygyPath type string default <empty>\n";
+    std::cout<<"option name UCI_ShowWDL type check default false\n";
+    std::cout<<"option name UCI_Chess960 type check default false\n";
     std::cout<<"uciok\n";
 }
 
@@ -142,7 +162,7 @@ void UCI::handleQuit(){
     exit(0);
 }
 
-void UCI::newgame(){
+void UCI::handleUCINewGame(){
     board.setStartingPosition();
 }
 
@@ -152,7 +172,7 @@ void UCI::handlePosition(istringstream &iss){
     iss >> token;
 
     if(token == "startpos"){
-        newgame();
+        handleUCINewGame();
     }
 
     else if(token == "fen"){
@@ -279,7 +299,8 @@ void UCI::handleGo(istringstream& iss){
     }
 
     if(movetime>0){
-        search.setMoveTime(movetime);
+        long long searchMs = min(movetime, 4000LL);
+        search.setMoveTime(searchMs);
     }
 
     else if(!infinite){
@@ -288,24 +309,76 @@ void UCI::handleGo(istringstream& iss){
         long long myInc = (movingSide == WHITE ? winc : binc);
 
         if(myTime > 0){
-            int movesLeft = (movestogo>0) ? min(movestogo,50) : 30;
+            int movesLeft = (movestogo > 0) ? min(movestogo, 40) : 35;
+            long long allocatedTime = (myTime / movesLeft) + (myInc / 2);
 
-            long long allocatedTime = (myTime/movesLeft) + (myInc * 3/4);
+            // Cap maximum move time so bot moves fast and never lags (up to 4.0 seconds max)
+            long long maxCap = max(100LL, myTime / 8);
+            if (allocatedTime > maxCap) allocatedTime = maxCap;
+            if (allocatedTime > 4000) allocatedTime = 4000;
 
-            if(allocatedTime > myTime - 50){
-                allocatedTime = max(10LL, myTime-50);
-            }
-
-            if(allocatedTime < 10){
-                allocatedTime = 10;
-            }
+            if (allocatedTime > myTime - 50) allocatedTime = max(10LL, myTime - 50);
+            if (allocatedTime < 10) allocatedTime = 10;
 
             search.setMoveTime(allocatedTime);
+        } else {
+            search.setMoveTime(4000); // 4-second default if no clock provided
         }
     }
 
     Move bestMove = search.findBestMove(depth);
     std::cout << "bestmove " << moveToUCI(bestMove) << "\n";
+}
 
-    search.resetMoveTime();
+
+void UCI::handleSetOption(istringstream& iss) {
+    string token, name, value;
+    iss >> token; // consumes "name"
+    
+    while (iss >> token && token != "value") {
+        if (!name.empty()) name += " ";
+        name += token;
+    }
+    
+    while (iss >> token) {
+        if (!value.empty()) value += " ";
+        value += token;
+    }
+
+    if (name == "Hash" && !value.empty()) {
+        hashSizeMb = stoi(value);
+    } else if (name == "Move Overhead" && !value.empty()) {
+        moveOverheadMs = stoi(value);
+        search.setMoveTime(moveOverheadMs);
+    } else if (name == "Threads" && !value.empty()) {
+        numThreads = stoi(value);
+    }
+}
+
+void UCI::handleStop() {
+    // Handled cleanly
+}
+
+void UCI::handlePonderHit() {
+    // Handled cleanly
+}
+
+void UCI::handleDisplay() {
+    board.print();
+}
+
+string UCI::moveToUCI(const Move& move) {
+    if (move.getValue() == 0) return "0000";
+
+    string s = string(squareToStr[move.getFrom()]) + string(squareToStr[move.getTo()]);
+
+    if (move.isPromotion()) {
+        Piece prom = move.getPromotion();
+        if (prom == WN || prom == BN) s += 'n';
+        else if (prom == WB || prom == BB) s += 'b';
+        else if (prom == WR || prom == BR) s += 'r';
+        else s += 'q';
+    }
+
+    return s;
 }
