@@ -100,3 +100,54 @@ int Search::quiescence(int alpha, int beta, int ply){
 
     return alpha;
 }
+
+
+
+
+int Search::negamax(int alpha, int beta, int depth, int ply){
+    if(depth<=0){
+        return quiescence(alpha, beta, ply);
+    }
+    
+    nodes++;
+
+    if(board.getHalfMoveClock() >= 100) return 0;
+
+    Move moves[MAX_MOVES];
+    int scores[MAX_MOVES];
+    int count = movegen.generateLegalMoves(moves);
+
+    if(count == 0){
+        Color movingSide = board.getMovingSide();
+        Square kingSq = board.getKingSquare(movingSide);
+        Color opp = (movingSide == WHITE ? BLACK : WHITE);
+
+        if(board.isSquareAttacked(kingSq, opp)) return -MATE_SCORE+ply;
+        else return 0;
+    }
+
+    orderMoves(moves, scores, count);
+
+    for(int i=0; i<count; i++){
+        int idx = i;
+
+        for(int j=i+1; j<count; j++){
+            if(scores[idx]<scores[j]){
+                idx=j;
+            }
+        }
+
+        swap(scores[i],scores[idx]);
+        swap(moves[i],moves[idx]);
+
+        board.makeMove(moves[i]);
+        int score = -negamax(-beta, -alpha, depth-1, ply+1);
+
+        board.undoMove(moves[i]);
+
+        if(score >= beta) return beta;
+        if(score > alpha) alpha = score;
+    }
+
+    return alpha;
+}
