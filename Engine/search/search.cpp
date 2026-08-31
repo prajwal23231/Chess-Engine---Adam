@@ -1,11 +1,102 @@
 #include "search.h"
+using namespace std;
 
-
-Search::Search(Board& board, MoveGenerator& movegen) : board(board), movegen(movegen){
+namespace {
+    // Approximate piece values for MVV-LVA sorting
+    constexpr int mvvPieceValues[NUM_PIECE_TYPE] = {
+        100,    // PAWN   (0)
+        300,    // KNIGHT (1)
+        500,    // ROOK   (2)
+        300,    // BISHOP (3)
+        900,    // QUEEN  (4)
+        10000   // KING   (5)
+    };
 }
 
 
 
-Move Search::findBestMove(int depth){
-    
+Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator) : board(board), movegen(movegen), evaluator(evaluator){
+    nodes=0;
+}
+
+
+int Search::scoreMove(const Move& move){
+    int score=0;
+    constexpr int promotionBase = 10000;
+
+    if(move.isCapture()){
+        Piece moved = move.getMovedPiece();
+        Piece captured = move.getCapturedPiece();
+
+        int attackerType = (moved >= BP ? moved - BP : moved);
+        int victimeType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
+
+        score = mvvPieceValues[victimeType] * 10 - mvvPieceValues[attackerType] + 10000;
+    }
+
+    if(move.isPromotion()){
+        Piece promoted = move.getPromotion();
+        int promotionVal = 0;
+
+        int promoType = (promoted >= BP ? promoted - BP : promoted);
+        promotionVal = mvvPieceValues[promoType]*10;
+
+        score += promotionVal;
+
+        if(!move.isCapture()) score+=promotionBase;
+    }
+
+    return score;
+}
+
+
+
+void Search::orderMoves(Move* moves,int* scores,int count){
+    for(int i=0; i<count; i++){
+        scores[i] = scoreMove(moves[i]);
+    }
+}
+
+
+
+int Search::quiescence(int alpha, int beta, int ply){
+    nodes++;
+    int standPat = evaluator.evaluate(board);
+
+    constexpr int BIG_DELTA = 975;
+
+    if(standPat >= beta) return beta;
+    if(standPat > alpha) alpha = standPat;
+
+    Move moves[MAX_MOVES];
+    int scores[MAX_MOVES];
+    int count = movegen.generateLegalMoves(moves);
+    orderMoves(moves, scores, count);
+
+
+    for(int i=0; i<count; i++){
+        int idx = i;
+
+        for(int j=i+1; j<count; j++){
+            if(scores[idx]<scores[j]){
+                idx=j;
+            }
+        }
+
+        swap(scores[i],scores[idx]);
+        swap(moves[i],moves[idx]);
+
+        if(!(moves[i].isCapture() || moves[i].isPromotion())) continue;
+        if (standPat < alpha - BIG_DELTA && !moves[i].isPromotion()) continue;
+
+        board.makeMove(moves[i]);
+        int score = -quiescence(-beta, -alpha, ply+1);
+
+        board.undoMove(moves[i]);
+
+        if(score >= beta) return beta;
+        if(score > alpha) alpha = score;
+    }
+
+    return alpha;
 }

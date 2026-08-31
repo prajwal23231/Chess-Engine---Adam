@@ -24,7 +24,8 @@ private:
 
     U64 nodes=0;
 
-    int quiescence(int alpha,int beta, int ply);
+    int negamax(int alpha, int beta, int depth, int ply);
+    int quiescence(int alpha, int beta, int ply);
 
     // Move ordering
     int scoreMove(const Move& move);
