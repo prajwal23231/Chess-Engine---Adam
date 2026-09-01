@@ -298,31 +298,85 @@ void UCI::handleGo(istringstream& iss){
         }
     }
 
-    if(movetime>0){
-        long long searchMs = min(movetime, 4000LL);
-        search.setMoveTime(searchMs);
+    if(movetime > 0){
+        search.setMoveTime(movetime);
     }
-
     else if(!infinite){
         Color movingSide = board.getMovingSide();
         long long myTime = (movingSide == WHITE ? wtime : btime);
         long long myInc = (movingSide == WHITE ? winc : binc);
 
         if(myTime > 0){
-            int movesLeft = (movestogo > 0) ? min(movestogo, 40) : 35;
-            long long allocatedTime = (myTime / movesLeft) + (myInc / 2);
+            long long allocatedTime = 0;
+            long long availableTime = max(10LL, myTime - moveOverheadMs);
 
-            // Cap maximum move time so bot moves fast and never lags (up to 4.0 seconds max)
-            long long maxCap = max(100LL, myTime / 8);
-            if (allocatedTime > maxCap) allocatedTime = maxCap;
-            if (allocatedTime > 4000) allocatedTime = 4000;
+            if (movestogo > 0) {
+                // Fixed moves to next time control
+                int movesLeft = min(movestogo, 40);
+                allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
+            } else {
+                // 1. Classical / 30+0: availableTime >= 1,800,000 ms (30+ min)
+                // Target: ~4–15 sec/move
+                if (availableTime >= 1800000) {
+                    allocatedTime = (availableTime / 120) + (myInc * 3 / 5);
+                    allocatedTime = min(allocatedTime, 15000LL); // Max 15s
+                    allocatedTime = max(allocatedTime, 4000LL);  // Min 4s
+                }
+                // 2. 20+0: 1,200,000 ms <= availableTime < 1,800,000 ms (20–30 min)
+                // Target: ~3–10 sec/move
+                else if (availableTime >= 1200000) {
+                    allocatedTime = (availableTime / 140) + (myInc * 3 / 5);
+                    allocatedTime = min(allocatedTime, 10000LL); // Max 10s
+                    allocatedTime = max(allocatedTime, 3000LL);  // Min 3s
+                }
+                // 3. 15+10 / Long Rapid: 800,000 ms <= availableTime < 1,200,000 ms (13–20 min)
+                // Target: ~2–8 sec/move
+                else if (availableTime >= 800000) {
+                    allocatedTime = (availableTime / 180) + (myInc / 2);
+                    allocatedTime = min(allocatedTime, 8000LL);  // Max 8s
+                    allocatedTime = max(allocatedTime, 2000LL);  // Min 2s
+                }
+                // 4. 10+0 and 10+5: 400,000 ms <= availableTime < 800,000 ms (6.5–13 min)
+                // Target: 10+0 -> ~1–4 sec/move, 10+5 -> ~1–5 sec/move
+                else if (availableTime >= 400000) {
+                    allocatedTime = (availableTime / 180) + (myInc / 2);
+                    long long maxRapidCap = (myInc >= 4000) ? 5000LL : 4000LL;
+                    allocatedTime = min(allocatedTime, maxRapidCap); // Max 4s (10+0) or 5s (10+5)
+                    allocatedTime = max(allocatedTime, 1000LL);      // Min 1s
+                }
+                // 5. Blitz standard: 100,000 ms <= availableTime < 400,000 ms (1.5–6.5 min, e.g. 3m/5m)
+                // Target: up to 3 sec max (~1–3 sec/move)
+                else if (availableTime >= 100000) {
+                    allocatedTime = (availableTime / 90) + (myInc * 2 / 5);
+                    allocatedTime = min(allocatedTime, 3000LL); // Max 3s strictly for Blitz
+                    allocatedTime = max(allocatedTime, 800LL);
+                }
+                // 6. Bullet / Low Time Scramble: 20,000 ms <= availableTime < 100,000 ms (20s–1.5m)
+                else if (availableTime >= 20000) {
+                    allocatedTime = (availableTime / 40) + (myInc * 2 / 5);
+                    allocatedTime = min(allocatedTime, 1500LL); // Max 1.5s
+                    allocatedTime = max(allocatedTime, 300LL);
+                }
+                // 7. Extreme Scramble: < 20 seconds remaining
+                else {
+                    // Fast cutoff to prevent flagging
+                    allocatedTime = (availableTime / 20) + (myInc / 4);
+                    allocatedTime = min(allocatedTime, 600LL);  // Max 600ms
+                }
+            }
 
-            if (allocatedTime > myTime - 50) allocatedTime = max(10LL, myTime - 50);
-            if (allocatedTime < 10) allocatedTime = 10;
+            // Hard safety bounds: never exceed remaining available time minus 20ms
+            long long absoluteSafetyCap = max(10LL, availableTime - 20);
+            if (allocatedTime > absoluteSafetyCap) {
+                allocatedTime = absoluteSafetyCap;
+            }
+            if (allocatedTime < 10) {
+                allocatedTime = 10;
+            }
 
             search.setMoveTime(allocatedTime);
         } else {
-            search.setMoveTime(4000); // 4-second default if no clock provided
+            search.setMoveTime(3000); // 3-second default if no clock provided
         }
     }
 
@@ -349,7 +403,6 @@ void UCI::handleSetOption(istringstream& iss) {
         hashSizeMb = stoi(value);
     } else if (name == "Move Overhead" && !value.empty()) {
         moveOverheadMs = stoi(value);
-        search.setMoveTime(moveOverheadMs);
     } else if (name == "Threads" && !value.empty()) {
         numThreads = stoi(value);
     }

@@ -27,7 +27,13 @@ int Search::scoreMove(const Move& move, int ply) {
     if (move.isPromotion()) {
         Piece promoted = move.getPromotion();
         int promoType = (promoted >= BP ? promoted - BP : promoted);
-        return 200000 + mvvPieceValues[promoType] * 10;
+        int score = 200000 + mvvPieceValues[promoType] * 10;
+        if (move.isCapture()) {
+            Piece captured = move.getCapturedPiece();
+            int victimType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
+            score += mvvPieceValues[victimType] * 10;
+        }
+        return score;
     }
 
     if (move.isCapture()) {
@@ -58,7 +64,7 @@ void Search::orderMoves(Move* moves, int* scores, int count, int ply) {
 }
 
 int Search::quiescence(int alpha, int beta, int ply) {
-    if ((nodes & 2047) == 0 && isTimeUp()) return 0;
+    if ((nodes & 1023) == 0 && isTimeUp()) return 0;
     nodes++;
 
     Color movingSide = board.getMovingSide();
@@ -84,6 +90,14 @@ int Search::quiescence(int alpha, int beta, int ply) {
 
     orderMoves(moves, scores, count, ply);
 
+    if (!inCheck) {
+        for (int i = 0; i < count; i++) {
+            if (!(moves[i].isCapture() || moves[i].isPromotion())) {
+                scores[i] = -1;
+            }
+        }
+    }
+
     for (int i = 0; i < count; i++) {
         // Pick move with best score
         int bestIdx = i;
@@ -96,8 +110,7 @@ int Search::quiescence(int alpha, int beta, int ply) {
         swap(moves[i], moves[bestIdx]);
 
         if (!inCheck) {
-            // Only search captures and promotions in quiescence when not in check
-            if (!(moves[i].isCapture() || moves[i].isPromotion())) continue;
+            if (scores[i] < 0) break;
 
             // Delta pruning
             if (standPat < alpha - 975 && !moves[i].isPromotion()) continue;
@@ -121,7 +134,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         return quiescence(alpha, beta, ply);
     }
 
-    if ((nodes & 2047) == 0 && isTimeUp()) return 0;
+    if ((nodes & 1023) == 0 && isTimeUp()) return 0;
     nodes++;
 
     // Draw detection (50-move rule and 3-fold repetition)
@@ -134,8 +147,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
     Color opp = (movingSide == WHITE ? BLACK : WHITE);
     bool inCheck = board.isSquareAttacked(kingSq, opp);
 
-    // Check extension
-    if (inCheck) {
+    // Check extension (bounded to avoid infinite tree traps)
+    if (inCheck && ply < MAX_PLYS - 10) {
         depth++;
     }
 
@@ -173,7 +186,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         if (score >= beta) {
             // Beta cutoff: update killer moves and history heuristic for quiet moves
             if (!moves[i].isCapture() && !moves[i].isPromotion()) {
-                if (ply < MAX_PLYS) {
+                if (ply < MAX_PLYS && killerMoves[0][ply].getValue() != moves[i].getValue()) {
                     killerMoves[1][ply] = killerMoves[0][ply];
                     killerMoves[0][ply] = moves[i];
                 }
@@ -242,7 +255,7 @@ Move Search::findBestMove(int depth) {
             int score = -negamax(-beta, -alpha, d - 1, 1);
             board.undoMove(moves[i]);
 
-            if (isTimeUp() && d > 1) {
+            if (stopped || isTimeUp()) {
                 completedDepth = false;
                 break;
             }
@@ -254,7 +267,7 @@ Move Search::findBestMove(int depth) {
             }
         }
 
-        if (completedDepth) {
+        if (completedDepth && !stopped) {
             bestMove = currentBest;
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
             U64 nps = elapsed > 0 ? (nodes * 1000) / elapsed : nodes;
@@ -267,7 +280,7 @@ Move Search::findBestMove(int depth) {
                       << "\n";
         }
 
-        if (isTimeUp()) break;
+        if (stopped || isTimeUp()) break;
 
         // If found checkmate, stop search early
         if (bestScore >= MATE_THRESHOLD || bestScore <= -MATE_THRESHOLD) {
