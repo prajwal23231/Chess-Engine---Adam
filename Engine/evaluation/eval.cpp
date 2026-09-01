@@ -440,8 +440,8 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* en
         while(fmask){
             Square other = static_cast<Square>(popLSB(fmask));
             if(!(between[s][other] & occ)){
-                score.mg -= connectedRooks[MG];
-                score.eg -= connectedRooks[EG];
+                score.mg += connectedRooks[MG];
+                score.eg += connectedRooks[EG];
             }
         }
 
@@ -598,71 +598,77 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
     U64 occ = board.getOccupancy(BOTH);
 
 
-    // White king safety
-    int wFile = clamp(getFile(wKingSq),1,6);
+    // White king safety - only apply pawn shield penalty when King is castled / on flanks
+    int wFile = getFile(wKingSq);
     int wShieldPenalty = 0;
 
-    for(int f = wFile-1; f <= wFile+1; f++){
-        U64 pawnOnFile = wp & fileMask[f];
+    if (wFile <= 2 || wFile >= 5) {
+        int wClampFile = clamp(wFile, 1, 6);
+        for(int f = wClampFile-1; f <= wClampFile+1; f++){
+            U64 pawnOnFile = wp & fileMask[f];
 
-        if(!pawnOnFile){
-            wShieldPenalty += PAWN_SHIELD_MISSING;
+            if(!pawnOnFile){
+                wShieldPenalty += PAWN_SHIELD_MISSING;
 
-            if(!(bp & fileMask[f])){
-                wShieldPenalty += OPEN_FILE_NEAR_KING;
+                if(!(bp & fileMask[f])){
+                    wShieldPenalty += OPEN_FILE_NEAR_KING;
+                }
+
+                else{
+                    wShieldPenalty += OPEN_FILE_NEAR_KING/2;
+                }
             }
+
 
             else{
-                wShieldPenalty += OPEN_FILE_NEAR_KING/2;
-            }
-        }
+                int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
 
+                if(lowestRank==2){
+                    wShieldPenalty += PAWN_SHIELD_STEPPED;
+                }
 
-        else{
-            int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
-
-            if(lowestRank==2){
-                wShieldPenalty += PAWN_SHIELD_STEPPED;
-            }
-
-            else if(lowestRank>=3){
-                wShieldPenalty += PAWN_SHIELD_MISSING;
+                else if(lowestRank>=3){
+                    wShieldPenalty += PAWN_SHIELD_MISSING;
+                }
             }
         }
     }
 
 
 
-    // Black king safety
-    int bFile = clamp(getFile(bKingSq),1,6);
+    // Black king safety - only apply pawn shield penalty when King is castled / on flanks
+    int bFile = getFile(bKingSq);
     int bShieldPenalty = 0;
 
-    for(int f = bFile-1; f <= bFile+1; f++){
-        U64 pawnOnFile = bp & fileMask[f];
+    if (bFile <= 2 || bFile >= 5) {
+        int bClampFile = clamp(bFile, 1, 6);
+        for(int f = bClampFile-1; f <= bClampFile+1; f++){
+            U64 pawnOnFile = bp & fileMask[f];
 
-        if(!pawnOnFile){
-            bShieldPenalty += PAWN_SHIELD_MISSING;
+            if(!pawnOnFile){
+                bShieldPenalty += PAWN_SHIELD_MISSING;
 
-            if(!(wp & fileMask[f])){
-                bShieldPenalty += OPEN_FILE_NEAR_KING;
+                if(!(wp & fileMask[f])){
+                    bShieldPenalty += OPEN_FILE_NEAR_KING;
+                }
+
+                else{
+                    bShieldPenalty += OPEN_FILE_NEAR_KING/2;
+                }
             }
+
 
             else{
-                bShieldPenalty += OPEN_FILE_NEAR_KING/2;
-            }
-        }
+                int highestRank = getRank(static_cast<Square>(63 - __builtin_clzll(pawnOnFile)));
 
 
-        else{
-            int highestRank = getRank(static_cast<Square>(63 - __builtin_clzll(pawnOnFile)));
+                if(highestRank==5){
+                    bShieldPenalty += PAWN_SHIELD_STEPPED;
+                }
 
-
-            if(highestRank==5){
-                bShieldPenalty += PAWN_SHIELD_STEPPED;
-            }
-
-            else if(highestRank<=4){
-                bShieldPenalty += PAWN_SHIELD_MISSING;
+                else if(highestRank<=4){
+                    bShieldPenalty += PAWN_SHIELD_MISSING;
+                }
             }
         }
     }
