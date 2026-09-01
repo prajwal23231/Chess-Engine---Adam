@@ -33,4 +33,9 @@ private:
 	void calculateKnightOutpost(const Board &board, EvalInfo &score,PawnEntry* entry);
 	void calculatePawns(const Board &board, EvalInfo &score);
 	void calculateKingSafety(const Board& board, EvalInfo & score);
+	void calculateDevelopment(const Board& board, EvalInfo &score);
+	void calculateHangingPieces(const Board& board, EvalInfo& score);
+	int calculateMatingScore(const Board& board, int egScore);
+	int getMaterialScaleFactor(const Board& board);
+	void calculateBishopTrappedAndBad(const Board& board, EvalInfo& score);
 };

@@ -14,6 +14,12 @@ namespace {
          85,  96, 107, 117, 128, 139, 149, 160,
         171, 181, 192, 203, 213, 224, 235, 245, 256
     };
+
+    inline int distance(Square a, Square b) {
+        return std::max(std::abs(getFile(a) - getFile(b)), std::abs(getRank(a) - getRank(b)));
+    }
+
+    constexpr int connectedPasserBonus[8] = { 0, 10, 20, 40, 70, 120, 200, 0 };
 }
 
 
@@ -31,7 +37,12 @@ int Evaluator::evaluate(const Board& board){
     calculateKnightOutpost(board, score, entry);
     calculateMobility(board, score, entry);
     calculateKingSafety(board, score);
-
+    calculateDevelopment(board, score);
+    calculateHangingPieces(board, score);
+    
+    score.eg = calculateMatingScore(board, score.eg);
+    int scaleFactor = getMaterialScaleFactor(board);
+    score.eg = (score.eg*scaleFactor)/128;
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
     return mult * interpolate(score, phase);
@@ -121,6 +132,8 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
     U64 wp = whitePawns;
     U64 bp = blackPawns;
 
+    U64 occ = board.getOccupancy(BOTH);
+
 
     while(wp){
         Square s = static_cast<Square>(popLSB(wp));
@@ -128,8 +141,52 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
         bool passed = !(whitePassedMask[s] & (blackPawns | (fileMask[file] & whitePawns)));
 
         if(passed){
-            pawnMG += passedPawnMG[rank];
-            pawnEG += passedPawnEG[rank];
+            int bonusMG = passedPawnMG[rank];
+            int bonusEG = passedPawnEG[rank];
+
+            Square stopSq = static_cast<Square>(s + 8);
+            Square promoSq = static_cast<Square>(getFile(s) + 56);
+
+            if (board.getKingSquare(BLACK) == stopSq) {
+                bonusEG /= 2;
+            }
+            
+            else if (occ & (1ULL << stopSq)) {
+                bonusEG -= 25;
+            }
+            
+            if (board.isSquareAttacked(promoSq, BLACK)) {
+                bonusEG -= 30;
+            }
+            
+            Square wKing = board.getKingSquare(WHITE);
+            Square bKing = board.getKingSquare(BLACK);
+            bonusEG += (5 - distance(wKing, s)) * 6;
+            bonusEG -= (5 - distance(bKing, s)) * 6;
+
+            if(attacks.getBlackPawnAttack(s) & whitePawns){
+                bonusMG += connectedPasserBonus[rank]/2;
+                bonusEG += connectedPasserBonus[rank];
+            }
+
+            if(adjacentFileMask[file] & (rankMask[rank] | rankMask[min(7,rank+1)]) & whitePawns){
+                bonusMG += connectedPasserBonus[rank]/2;
+                bonusEG += connectedPasserBonus[rank];
+            }
+
+            if(board.getGamePhase() == 0){
+                int promoDist = 7-rank;
+                if(rank == 1) promoDist--;
+                if(board.getMovingSide() == WHITE) promoDist--;
+
+                int kingDist = distance(bKing,promoSq);
+                if(kingDist > promoDist){
+                    bonusEG += 800;
+                }
+            }
+
+            pawnMG += bonusMG;
+            pawnEG += bonusEG;
 
             wPassed |= 1ULL<<s;
         }
@@ -186,8 +243,52 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
 
 
         if(passed){
-            pawnMG -= passedPawnMG[mirrored];
-            pawnEG -= passedPawnEG[mirrored];
+            int bonusMG = passedPawnMG[mirrored];
+            int bonusEG = passedPawnEG[mirrored];
+
+            Square stopSq = static_cast<Square>(s - 8);
+            Square promoSq = static_cast<Square>(getFile(s)); // 1st rank
+            
+            if (board.getKingSquare(WHITE) == stopSq) {
+                bonusEG /= 2;
+            }
+            
+            else if (occ & (1ULL << stopSq)) {
+                bonusEG -= 25;
+            }
+            
+            if (board.isSquareAttacked(promoSq, WHITE)) {
+                bonusEG -= 30;
+            }
+            
+            Square wKing = board.getKingSquare(WHITE);
+            Square bKing = board.getKingSquare(BLACK);
+            bonusEG += (5 - distance(bKing, s)) * 6;
+            bonusEG -= (5 - distance(wKing, s)) * 6;
+
+            if(attacks.getWhitePawnAttack(s) & blackPawns){
+                bonusMG += connectedPasserBonus[mirrored]/2;
+                bonusEG += connectedPasserBonus[mirrored];
+            }
+
+            if(adjacentFileMask[file] & (rankMask[rank] | rankMask[max(0, rank-1)]) & blackPawns){
+                bonusMG += connectedPasserBonus[mirrored]/2;
+                bonusEG += connectedPasserBonus[mirrored];
+            }
+
+            if(board.getGamePhase() == 0){
+                int promoDist = rank;
+                if(rank == 6) promoDist--;
+                if(board.getMovingSide() == BLACK) promoDist--;
+
+                int kingDist = distance(wKing,promoSq);
+                if(kingDist > promoDist){
+                    bonusEG += 800;
+                }
+            }
+
+            pawnMG -= bonusMG;
+            pawnEG -= bonusEG;
 
             bPassed |= 1ULL<<s;
         }
@@ -598,6 +699,19 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
     U64 occ = board.getOccupancy(BOTH);
 
 
+    if (board.getGamePhase() < 12) {
+        // White king advanced into enemy territory (rank >= 4)
+        if (getRank(wKingSq) >= 4) {
+            score.eg += (getRank(wKingSq) - 3) * 15;
+        }
+
+        // Black king advanced into White territory (rank <= 3)
+        if (getRank(bKingSq) <= 3) {
+            score.eg -= (4 - getRank(bKingSq)) * 15;
+        }
+    }
+
+
     // White king safety - only apply pawn shield penalty when King is castled / on flanks
     int wFile = getFile(wKingSq);
     int wShieldPenalty = 0;
@@ -820,4 +934,159 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
     score.mg -= bDangerScore;
     score.mg += wDangerScore;
+}
+
+
+
+
+void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
+    if(board.getGamePhase() < 18) return ;
+
+    constexpr int UNDEVELOPED_PENALTY = 18;
+
+    if (board.getPieceBoard(B1) == WN) score.mg -= UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(G1) == WN) score.mg -= UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(C1) == WB) score.mg -= UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(F1) == WB) score.mg -= UNDEVELOPED_PENALTY;
+    // Black undeveloped minors on home squares
+    if (board.getPieceBoard(B8) == BN) score.mg += UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(G8) == BN) score.mg += UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(C8) == BB) score.mg += UNDEVELOPED_PENALTY;
+    if (board.getPieceBoard(F8) == BB) score.mg += UNDEVELOPED_PENALTY;
+    // Retaining castling rights reward
+    if (board.getCastlingRights() & (CASTLE_WK | CASTLE_WQ)) score.mg += 12;
+    if (board.getCastlingRights() & (CASTLE_BK | CASTLE_BQ)) score.mg -= 12;
+}
+
+
+
+void Evaluator::calculateHangingPieces(const Board& board, EvalInfo& score){
+    for(int p=WN; p<=WQ; p++){
+        U64 bb = board.getBitboard(static_cast<Piece>(p));
+
+        while(bb){
+            Square sq = static_cast<Square>(popLSB(bb));
+            
+            if(board.isSquareAttacked(sq, BLACK) && !board.isSquareAttacked(sq, WHITE)){
+                int penalty = mg_value[p] / 4;
+                score.mg -= penalty;
+                score.eg -= penalty;
+            }
+        }
+    }
+
+
+    for(int p=BN; p<=BQ; p++){
+        U64 bb = board.getBitboard(static_cast<Piece>(p));
+
+        while(bb){
+            Square sq = static_cast<Square>(popLSB(bb));
+            
+            if(board.isSquareAttacked(sq, WHITE) && !board.isSquareAttacked(sq, BLACK)){
+                int penalty = mg_value[p] / 4;
+                score.mg += penalty;
+                score.eg += penalty;
+            }
+        }
+    }
+}
+
+
+int Evaluator::calculateMatingScore(const Board& board, int egScore){
+    if(abs(egScore < 350)) return egScore;
+
+    Color winingSide = (egScore > 0) ? WHITE : BLACK;
+    Color losingSide = (egScore > 0) ? BLACK : WHITE;
+
+    Square winKing = board.getKingSquare(winingSide);
+    Square loseKing = board.getKingSquare(losingSide);
+
+    if(winKing == NO_SQUARE || loseKing == NO_SQUARE) return egScore;
+
+    int lRank = getRank(loseKing);
+    int lFile = getFile(loseKing);
+
+    int centerDistRank = max(3-lRank, lRank-4);
+    int centerDistFile = max(3-lFile, lFile-4);
+    int pushToEdge = (centerDistRank + centerDistFile) * 12;
+
+    int kingdDist = distance(winKing, loseKing);
+    int closeIn = (14 - kingdDist) * 6;
+
+    int bonus = pushToEdge + closeIn;
+    return winingSide == WHITE ? egScore+bonus : egScore-bonus;
+}
+
+
+int Evaluator::getMaterialScaleFactor(const Board& board){
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+    U64 wn = board.getBitboard(WN);
+    U64 bn = board.getBitboard(BN);
+    U64 wb = board.getBitboard(WB);
+    U64 bb = board.getBitboard(BB);
+    U64 wr = board.getBitboard(WR);
+    U64 br = board.getBitboard(BR);
+    U64 wq = board.getBitboard(WQ);
+    U64 bq = board.getBitboard(BQ);
+
+    int wMajors = popCount(wr | wq);
+    int bMajors = popCount(br | bq);
+    int wMinors = popCount(wn | wb);
+    int bMinors = popCount(bn | bb);
+
+    if(!wp && wMajors == 0 && popCount(wn) == 2 && wMinors == 2 && (bMajors + bMinors + popCount(bp)) == 0){
+        return 0;
+    }
+
+    if(!bp && bMajors == 0 && popCount(bn) == 2 && bMinors == 2 && (wMajors + wMinors + popCount(wp)) == 0){
+        return 0;
+    }
+
+
+    if(wMajors == 0 && bMajors == 0 && wMinors == 1 && bMinors == 1 && wb && bb){
+        bool wLight = (wb & LIGHT_SQUARES);
+        bool bLight = (bb & LIGHT_SQUARES);
+        if (wLight != bLight && (popCount(wp) + popCount(bp)) <= 2) {
+            return 64; // 50% draw scaling
+        }
+    }
+
+
+    return 128;
+}
+
+
+
+void Evaluator::calculateBishopTrappedAndBad(const Board& board, EvalInfo& score) {
+    U64 wb = board.getBitboard(WB);
+    U64 bb = board.getBitboard(BB);
+    U64 wp = board.getBitboard(WP);
+    U64 bp = board.getBitboard(BP);
+
+    while (wb) {
+        Square sq = static_cast<Square>(popLSB(wb));
+        U64 colorMask = ((1ULL<<sq) & LIGHT_SQUARES) ? LIGHT_SQUARES : DARK_SQUARES;
+
+        int blockedPawns = popCount(wp & colorMask);
+        score.mg -= blockedPawns * 4;
+        score.eg -= blockedPawns * 6;
+
+        if(sq == B3 && (bp & (1ULL<<A4)) && (bp & (1ULL<<C4))){
+            score.mg -= 150;
+        }
+    }
+
+    while (bb) {
+        Square sq = static_cast<Square>(popLSB(bb));
+        U64 colorMask = ((1ULL<<sq) & LIGHT_SQUARES) ? LIGHT_SQUARES : DARK_SQUARES;
+
+        int blockedPawns = popCount(bp & colorMask);
+        score.mg += blockedPawns * 4;
+        score.eg += blockedPawns * 6;
+
+        if(sq == B6 && (wp & (1ULL<<A5)) && (wp & (1ULL<<C5))){
+            score.mg += 150;
+        }
+    }
 }

@@ -4,6 +4,7 @@
 #include <algorithm>
 
 using namespace std;
+using namespace Bitboard;
 
 namespace {
     // Approximate piece values for MVV-LVA sorting
@@ -14,6 +15,23 @@ namespace {
         300,    // BISHOP (3)
         900,    // QUEEN  (4)
         10000   // KING   (5)
+    };
+
+    constexpr U64 castleShieldMask[BOARD_SIZE] = {
+        // C1 (Queenside White)
+        0, 0, (1ULL << A2) | (1ULL << B2) | (1ULL << C2), 0, 0, 0,
+        // G1 (Kingside White)
+        (1ULL << F2) | (1ULL << G2) | (1ULL << H2), 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        // C8 (Queenside Black)
+        0, 0, (1ULL << A7) | (1ULL << B7) | (1ULL << C7), 0, 0, 0,
+        // G8 (Kingside Black)
+        (1ULL << F7) | (1ULL << G7) | (1ULL << H7), 0
     };
 }
 
@@ -54,7 +72,16 @@ int Search::scoreMove(const Move& move, int ply) {
 
     // History heuristic
     Color side = board.getMovingSide();
-    return min(historyTable[side][move.getFrom()][move.getTo()], 70000);
+    int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 70000);
+
+    if(move.isCastle()){
+        Square to = move.getTo();
+        Piece myPawn = (side == WHITE ? WP : BP);
+        int shieldCount = popCount(board.getBitboard(myPawn) & castleShieldMask[to]);
+        return historyScore + (board.getGamePhase() * 1100) + (shieldCount * 2500);
+    }
+
+    return historyScore;
 }
 
 void Search::orderMoves(Move* moves, int* scores, int count, int ply) {
@@ -176,6 +203,17 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
     Color opp = (movingSide == WHITE ? BLACK : WHITE);
     bool inCheck = board.isSquareAttacked(kingSq, opp);
 
+    if(depth <=2 && !inCheck && abs(beta) < MATE_THRESHOLD){
+        int eval = evaluator.evaluate(board);
+        int margin = 120 * depth;
+        
+        if(eval - margin >= beta){
+            return beta;
+        }
+    }
+
+    int extension = inCheck ? 1 : 0;
+
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
     int count = movegen.generateLegalMoves(moves);
@@ -200,12 +238,25 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         swap(moves[i], moves[bestIdx]);
 
         board.makeMove(moves[i]);
-        int score = -negamax(-beta, -alpha, depth - 1, ply + 1);
+        int score = 0;
+        bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
+
+        if(movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck){
+            score = -negamax(-alpha-1, -alpha, depth - 2 + extension, ply + 1);
+
+            if(score > alpha){
+                score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
+            }
+        }
+
+        else{
+            score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
+        }
+
         board.undoMove(moves[i]);
+        movesSearched++;
 
         if (stopped) return 0;
-
-        movesSearched++;
 
         if (score >= beta) {
             // Beta cutoff: update killer moves and history heuristic for quiet moves
