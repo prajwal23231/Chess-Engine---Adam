@@ -67,17 +67,12 @@ int Search::quiescence(int alpha, int beta, int ply) {
     if ((nodes & 1023) == 0 && isTimeUp()) return 0;
     nodes++;
 
+    if (ply >= MAX_PLYS - 1) return evaluator.evaluate(board);
+
     Color movingSide = board.getMovingSide();
     Square kingSq = board.getKingSquare(movingSide);
     Color opp = (movingSide == WHITE ? BLACK : WHITE);
     bool inCheck = board.isSquareAttacked(kingSq, opp);
-
-    int standPat = 0;
-    if (!inCheck) {
-        standPat = evaluator.evaluate(board);
-        if (standPat >= beta) return beta;
-        if (standPat > alpha) alpha = standPat;
-    }
 
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
@@ -88,18 +83,47 @@ int Search::quiescence(int alpha, int beta, int ply) {
         return 0; // Stalemate
     }
 
+    if (inCheck) {
+        // When in check in quiescence, search all evasions and never return a false high alpha
+        int bestScore = -INFINITY_SCORE;
+        orderMoves(moves, scores, count, ply);
+
+        for (int i = 0; i < count; i++) {
+            int bestIdx = i;
+            for (int j = i + 1; j < count; j++) {
+                if (scores[j] > scores[bestIdx]) bestIdx = j;
+            }
+            swap(scores[i], scores[bestIdx]);
+            swap(moves[i], moves[bestIdx]);
+
+            board.makeMove(moves[i]);
+            int score = -quiescence(-beta, -alpha, ply + 1);
+            board.undoMove(moves[i]);
+
+            if (stopped) return 0;
+
+            if (score > bestScore) bestScore = score;
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+        return bestScore;
+    }
+
+    // Stand-pat evaluation when not in check
+    int standPat = evaluator.evaluate(board);
+    if (standPat >= beta) return beta;
+    if (standPat > alpha) alpha = standPat;
+
     orderMoves(moves, scores, count, ply);
 
-    if (!inCheck) {
-        for (int i = 0; i < count; i++) {
-            if (!(moves[i].isCapture() || moves[i].isPromotion())) {
-                scores[i] = -1;
-            }
+    // Filter out quiet moves
+    for (int i = 0; i < count; i++) {
+        if (!(moves[i].isCapture() || moves[i].isPromotion())) {
+            scores[i] = -1;
         }
     }
 
     for (int i = 0; i < count; i++) {
-        // Pick move with best score
         int bestIdx = i;
         for (int j = i + 1; j < count; j++) {
             if (scores[j] > scores[bestIdx]) {
@@ -109,11 +133,14 @@ int Search::quiescence(int alpha, int beta, int ply) {
         swap(scores[i], scores[bestIdx]);
         swap(moves[i], moves[bestIdx]);
 
-        if (!inCheck) {
-            if (scores[i] < 0) break;
+        if (scores[i] < 0) break;
 
-            // Delta pruning
-            if (standPat < alpha - 975 && !moves[i].isPromotion()) continue;
+        // Accurate Delta Pruning: only prune if even capturing this specific piece cannot reach alpha
+        Piece captured = moves[i].getCapturedPiece();
+        int victimType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
+        int pieceVal = mvvPieceValues[victimType];
+        if (standPat + pieceVal + 200 < alpha && !moves[i].isPromotion()) {
+            continue;
         }
 
         board.makeMove(moves[i]);
@@ -142,15 +169,12 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         return 0;
     }
 
+    if (ply >= MAX_PLYS - 1) return evaluator.evaluate(board);
+
     Color movingSide = board.getMovingSide();
     Square kingSq = board.getKingSquare(movingSide);
     Color opp = (movingSide == WHITE ? BLACK : WHITE);
     bool inCheck = board.isSquareAttacked(kingSq, opp);
-
-    // Check extension (bounded to avoid infinite tree traps)
-    if (inCheck && ply < MAX_PLYS - 10) {
-        depth++;
-    }
 
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
@@ -211,22 +235,31 @@ Move Search::findBestMove(int depth) {
     memset(killerMoves, 0, sizeof(killerMoves));
     memset(historyTable, 0, sizeof(historyTable));
 
-    Move bestMove;
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
     int count = movegen.generateLegalMoves(moves);
 
-    if (count == 0) return bestMove;
+    if (count == 0) return Move();
     if (count == 1) return moves[0];
 
-    bestMove = moves[0];
+    // Order initial root moves so default pre-search move is best heuristic move
+    orderMoves(moves, scores, count, 0);
+    int initialBestIdx = 0;
+    for (int i = 1; i < count; i++) {
+        if (scores[i] > scores[initialBestIdx]) initialBestIdx = i;
+    }
+    swap(moves[0], moves[initialBestIdx]);
+    swap(scores[0], scores[initialBestIdx]);
+
+    Move bestMove = moves[0];
+    int bestScore = -INFINITY_SCORE;
 
     for (int d = 1; d <= depth; d++) {
         if (isTimeUp()) break;
 
         int alpha = -INFINITY_SCORE, beta = INFINITY_SCORE;
-        Move currentBest = bestMove;
-        int bestScore = -INFINITY_SCORE;
+        Move currentIterationBest = moves[0];
+        int currentIterationScore = -INFINITY_SCORE;
         bool completedDepth = true;
 
         orderMoves(moves, scores, count, 0);
@@ -255,6 +288,7 @@ Move Search::findBestMove(int depth) {
             int score = -negamax(-beta, -alpha, d - 1, 1);
             board.undoMove(moves[i]);
 
+            // If stopped or timed out during evaluation of this move, abort this depth completely!
             if (stopped || isTimeUp()) {
                 completedDepth = false;
                 break;
@@ -262,28 +296,44 @@ Move Search::findBestMove(int depth) {
 
             if (score > alpha) {
                 alpha = score;
-                bestScore = score;
-                currentBest = moves[i];
+                currentIterationScore = score;
+                currentIterationBest = moves[i];
             }
         }
 
+        // Only commit currentIterationBest if this entire depth finished without timeout
         if (completedDepth && !stopped) {
-            bestMove = currentBest;
+            bestMove = currentIterationBest;
+            bestScore = currentIterationScore;
+
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
             U64 nps = elapsed > 0 ? (nodes * 1000) / elapsed : nodes;
+
+            string pvMove = string(squareToStr[bestMove.getFrom()]) + string(squareToStr[bestMove.getTo()]);
+            if (bestMove.isPromotion()) {
+                Piece prom = bestMove.getPromotion();
+                if (prom == WN || prom == BN) pvMove += 'n';
+                else if (prom == WB || prom == BB) pvMove += 'b';
+                else if (prom == WR || prom == BR) pvMove += 'r';
+                else pvMove += 'q';
+            }
+
             std::cout << "info depth " << d 
                       << " score cp " << bestScore 
                       << " nodes " << nodes 
                       << " nps " << nps 
                       << " time " << elapsed 
-                      << " pv " << (string(squareToStr[bestMove.getFrom()]) + string(squareToStr[bestMove.getTo()])) 
+                      << " pv " << pvMove 
                       << "\n";
+        } else {
+            // Aborted mid-depth: strictly keep bestMove from the last fully completed depth!
+            break;
         }
 
         if (stopped || isTimeUp()) break;
 
-        // If found checkmate, stop search early
-        if (bestScore >= MATE_THRESHOLD || bestScore <= -MATE_THRESHOLD) {
+        // If found forced checkmate win, stop search early
+        if (bestScore >= MATE_THRESHOLD) {
             break;
         }
     }
