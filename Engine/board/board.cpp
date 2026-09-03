@@ -642,3 +642,42 @@ void Board::undoMove(const Move &move){
 }
 
 
+void Board::makeNullMove(){
+    assert(ply < MAX_PLYS);
+
+    history[ply++] = {
+        castlingRights,
+        enPassant,
+        halfmoveClock,
+        zobristKey,
+        pawnKey,
+        gamePhase,
+        mgScore,
+        egScore
+    };
+
+    if(enPassant != NO_SQUARE){
+        zobristKey ^= Zobrist::getEnPassantKeys(getFile(enPassant));
+        enPassant = NO_SQUARE;
+    }
+
+    sideToMove = (sideToMove == WHITE ? BLACK : WHITE);
+    zobristKey ^= Zobrist::getSideKey();
+    halfmoveClock++;
+}
+
+
+void Board::undoNullMove(){
+    ply--;
+
+    castlingRights = history[ply].castlingRights;
+    enPassant = history[ply].enpassant;
+    halfmoveClock = history[ply].halfMoveClock;
+    zobristKey = history[ply].zobristKey;
+    pawnKey = history[ply].pawnKey;
+    gamePhase = history[ply].gamePhase;
+    mgScore = history[ply].mgScore;
+    egScore = history[ply].egScore;
+
+    sideToMove = (sideToMove == WHITE ? BLACK : WHITE);
+}

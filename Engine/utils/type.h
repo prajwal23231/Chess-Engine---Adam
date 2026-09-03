@@ -95,6 +95,10 @@ inline constexpr std::array<std::string_view, 64> squareToStr = {
 };
 
 
+inline int distance(Square a, Square b) {
+    return std::max(std::abs(getFile(a) - getFile(b)), std::abs(getRank(a) - getRank(b)));
+}
+
 
 enum Stage {
     MG,

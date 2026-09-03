@@ -50,6 +50,19 @@ public:
 	inline int getMgScore() const { return mgScore; }
 	inline int getEgScore() const { return egScore; }
 
+
+	void makeNullMove();
+	void undoNullMove();
+	inline bool hasNonPawnMaterial(Color c) const{
+		if(c == WHITE){
+			return bitboards[WN] | bitboards[WB] | bitboards[WR] | bitboards[WQ];
+		}
+
+		else{
+			return bitboards[BN] | bitboards[BB] | bitboards[BR] | bitboards[BQ];
+		}
+	}
+
 private:
 	std::array<U64, NUM_PIECES> bitboards;
 	std::array<Piece, BOARD_SIZE> board;

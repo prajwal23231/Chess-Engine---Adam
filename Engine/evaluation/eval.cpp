@@ -15,10 +15,6 @@ namespace {
         171, 181, 192, 203, 213, 224, 235, 245, 256
     };
 
-    inline int distance(Square a, Square b) {
-        return std::max(std::abs(getFile(a) - getFile(b)), std::abs(getRank(a) - getRank(b)));
-    }
-
     constexpr int connectedPasserBonus[8] = { 0, 15, 30, 60, 100, 180, 300, 0 };
 }
 
@@ -754,6 +750,24 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
             }
         }
     }
+    
+    else {
+        // King is uncastled in the center (d or e file)
+        bool ownPawnOnKingFile = (wp & fileMask[wFile]);
+        bool enemyPawnOnKingFile = (bp & fileMask[wFile]);
+
+        if (!ownPawnOnKingFile) {
+            wShieldPenalty += 45; // Semi-open file in front of central King!
+            if (!enemyPawnOnKingFile) {
+                wShieldPenalty += 35; // Fully open file right in front of central King (total 80 cp)!
+            }
+        }
+
+        int adjCenter = (wFile == 4) ? 3 : 4; // Check adjacent d/e file
+        if (!(wp & fileMask[adjCenter])) {
+            wShieldPenalty += 25;
+        }
+    }
 
 
 
@@ -791,6 +805,24 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
                     bShieldPenalty += PAWN_SHIELD_MISSING;
                 }
             }
+        }
+    } 
+    
+    else {
+        // King is uncastled in the center (d or e file)
+        bool ownPawnOnKingFile = (bp & fileMask[bFile]);
+        bool enemyPawnOnKingFile = (wp & fileMask[bFile]);
+
+        if (!ownPawnOnKingFile) {
+            bShieldPenalty += 45; // Semi-open file in front of central King!
+            if (!enemyPawnOnKingFile) {
+                bShieldPenalty += 35; // Fully open file right in front of central King (total 80 cp)!
+            }
+        }
+
+        int adjCenter = (bFile == 4) ? 3 : 4; // Check adjacent d/e file
+        if (!(bp & fileMask[adjCenter])) {
+            bShieldPenalty += 25;
         }
     }
 
@@ -960,9 +992,27 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
     if (board.getPieceBoard(G8) == BN) score.mg += UNDEVELOPED_PENALTY;
     if (board.getPieceBoard(C8) == BB) score.mg += UNDEVELOPED_PENALTY;
     if (board.getPieceBoard(F8) == BB) score.mg += UNDEVELOPED_PENALTY;
-    // Retaining castling rights reward
-    if (board.getCastlingRights() & (CASTLE_WK | CASTLE_WQ)) score.mg += 12;
-    if (board.getCastlingRights() & (CASTLE_BK | CASTLE_BQ)) score.mg -= 12;
+    // Castling state incentives (Middlegame)
+    Square wKing = board.getKingSquare(WHITE);
+    Square bKing = board.getKingSquare(BLACK);
+
+    // White castling evaluation
+    if (wKing == G1 || wKing == C1) {
+        score.mg += 30; // Safely castled!
+    } else if (board.getCastlingRights() & (CASTLE_WK | CASTLE_WQ)) {
+        score.mg += 15; // Still holds right to castle
+    } else {
+        score.mg -= 35; // Trapped in center with no castling rights!
+    }
+
+    // Black castling evaluation
+    if (bKing == G8 || bKing == C8) {
+        score.mg -= 30; // Safely castled!
+    } else if (board.getCastlingRights() & (CASTLE_BK | CASTLE_BQ)) {
+        score.mg -= 15; // Still holds right to castle
+    } else {
+        score.mg += 35; // Trapped in center with no castling rights!
+    }
 }
 
 

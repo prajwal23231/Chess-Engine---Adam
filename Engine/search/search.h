@@ -41,7 +41,7 @@ private:
     Move killerMoves[2][MAX_PLYS];
     int historyTable[2][BOARD_SIZE][BOARD_SIZE];
 
-    int negamax(int alpha, int beta, int depth, int ply);
+    int negamax(int alpha, int beta, int depth, int ply, bool allowNull = true);
     int quiescence(int alpha, int beta, int ply);
 
     // Move ordering

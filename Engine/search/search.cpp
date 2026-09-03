@@ -204,7 +204,7 @@ int Search::quiescence(int alpha, int beta, int ply) {
 
 
 
-int Search::negamax(int alpha, int beta, int depth, int ply) {
+int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
     if (depth <= 0) {
         return quiescence(alpha, beta, ply);
     }
@@ -259,6 +259,25 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         
         if(eval - margin >= beta){
             return beta;
+        }
+    }
+
+
+    constexpr int R = 2; // reduction factor (2 piles)
+
+    if(allowNull && depth >= 3 && !inCheck && abs(beta) < MATE_THRESHOLD && board.hasNonPawnMaterial(movingSide)){
+        int staticEval = evaluator.evaluate(board);
+
+        if(staticEval >= beta){
+            board.makeNullMove();
+            int NullScore = -negamax(-beta, -beta+1, depth-1-R, ply+1, false);
+            board.undoNullMove();
+
+            if (stopped || isTimeUp()) return 0;
+
+            if(NullScore >= beta && NullScore >= MATE_THRESHOLD){
+                return NullScore; 
+            }
         }
     }
 
