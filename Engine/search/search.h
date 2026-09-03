@@ -6,10 +6,7 @@
 #include "evaluation/eval.h"
 #include <chrono>
 #include <cstring>
-
-constexpr int INFINITY_SCORE = 300000;
-constexpr int MATE_SCORE     = 100000;
-constexpr int MATE_THRESHOLD = MATE_SCORE - MAX_PLYS;
+#include "hash/tt.h"
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -27,10 +24,13 @@ public:
         stopped = true;
     }
 
+    inline TranspositionTable& getTT() { return tt; }
+
 private:
     Board& board;
     MoveGenerator& movegen;
     Evaluator evaluator;
+    TranspositionTable tt;
 
     U64 nodes = 0;
     long long timeLimitMs = 4000;
@@ -45,8 +45,8 @@ private:
     int quiescence(int alpha, int beta, int ply);
 
     // Move ordering
-    int scoreMove(const Move& move, int ply);
-    void orderMoves(Move* moves, int* scores, int count, int ply);
+    int scoreMove(const Move& move, int ply, const Move& ttMove = Move());
+    void orderMoves(Move* moves, int* scores, int count, int ply, const Move& ttMove = Move());
 
     inline bool isTimeUp() {
         if (stopped) return true;

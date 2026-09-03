@@ -35,13 +35,23 @@ namespace {
     };
 }
 
+
+
 Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator) 
     : board(board), movegen(movegen), evaluator(evaluator) {
     memset(killerMoves, 0, sizeof(killerMoves));
     memset(historyTable, 0, sizeof(historyTable));
+    tt.init(64);
 }
 
-int Search::scoreMove(const Move& move, int ply) {
+
+int Search::scoreMove(const Move& move, int ply,const Move& ttMove = Move()) {
+    // tt move is top priority
+    if(ttMove.getValue() != 0 && move.getValue() == ttMove.getValue()){
+        return 10000000;
+    }
+
+
     if (move.isPromotion()) {
         Piece promoted = move.getPromotion();
         int promoType = (promoted >= BP ? promoted - BP : promoted);
@@ -54,6 +64,7 @@ int Search::scoreMove(const Move& move, int ply) {
         return score;
     }
 
+
     if (move.isCapture()) {
         Piece moved = move.getMovedPiece();
         Piece captured = move.getCapturedPiece();
@@ -64,15 +75,18 @@ int Search::scoreMove(const Move& move, int ply) {
         return 100000 + (mvvPieceValues[victimType] * 10 - mvvPieceValues[attackerType]);
     }
 
+
     // Killer moves
     if (ply < MAX_PLYS) {
         if (killerMoves[0][ply].getValue() == move.getValue()) return 90000;
         if (killerMoves[1][ply].getValue() == move.getValue()) return 80000;
     }
 
+
     // History heuristic
     Color side = board.getMovingSide();
     int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 70000);
+
 
     if(move.isCastle()){
         Square to = move.getTo();
@@ -81,14 +95,19 @@ int Search::scoreMove(const Move& move, int ply) {
         return historyScore + (board.getGamePhase() * 1100) + (shieldCount * 2500);
     }
 
+
     return historyScore;
 }
 
-void Search::orderMoves(Move* moves, int* scores, int count, int ply) {
+
+
+void Search::orderMoves(Move* moves, int* scores, int count, int ply, const Move& ttMove = Move()) {
     for (int i = 0; i < count; i++) {
-        scores[i] = scoreMove(moves[i], ply);
+        scores[i] = scoreMove(moves[i], ply, ttMove);
     }
 }
+
+
 
 int Search::quiescence(int alpha, int beta, int ply) {
     if ((nodes & 1023) == 0 && isTimeUp()) return 0;
@@ -183,6 +202,8 @@ int Search::quiescence(int alpha, int beta, int ply) {
     return alpha;
 }
 
+
+
 int Search::negamax(int alpha, int beta, int depth, int ply) {
     if (depth <= 0) {
         return quiescence(alpha, beta, ply);
@@ -197,6 +218,35 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
     }
 
     if (ply >= MAX_PLYS - 1) return evaluator.evaluate(board);
+
+
+    int orignalAlpha = alpha;
+    Move ttMove;
+    TTEntry* entry = tt.probe(board.getZobristKey());
+
+    if(entry != nullptr){
+        ttMove = entry->bestMove;
+
+        if(ply>0 && entry->depth >= depth){
+            int ttScore = TranspositionTable::scoreFromTT(entry->score,ply);
+
+            // exact pv node
+            if(entry->flag == TT_EXACT){
+                return ttScore;
+            }
+
+            // beta cutoff
+            if(entry->flag == TT_LOWER && ttScore >= beta){
+                return ttScore;
+            }
+
+            // alpha cutoff
+            if(entry->flag == TT_UPPER && ttScore <= alpha){
+                return ttScore;
+            }
+        }
+    }
+
 
     Color movingSide = board.getMovingSide();
     Square kingSq = board.getKingSquare(movingSide);
@@ -223,7 +273,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         return 0; // Stalemate
     }
 
-    orderMoves(moves, scores, count, ply);
+    orderMoves(moves, scores, count, ply, ttMove);
+    Move bestMove;
 
     int movesSearched = 0;
     for (int i = 0; i < count; i++) {
@@ -241,6 +292,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         int score = 0;
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
 
+
+        // LMR
         if(movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck){
             score = -negamax(-alpha-1, -alpha, depth - 2 + extension, ply + 1);
 
@@ -259,6 +312,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
         if (stopped) return 0;
 
         if (score >= beta) {
+            bestMove = moves[i];
+
             // Beta cutoff: update killer moves and history heuristic for quiet moves
             if (!moves[i].isCapture() && !moves[i].isPromotion()) {
                 if (ply < MAX_PLYS && killerMoves[0][ply].getValue() != moves[i].getValue()) {
@@ -267,14 +322,22 @@ int Search::negamax(int alpha, int beta, int depth, int ply) {
                 }
                 historyTable[movingSide][moves[i].getFrom()][moves[i].getTo()] += depth * depth;
             }
+
+            tt.store(board.getZobristKey(), depth, score, TT_LOWER, bestMove, ply);
             return beta;
         }
 
+
         if (score > alpha) {
             alpha = score;
+            bestMove = moves[i];
         }
     }
 
+
+    TTFlag flag = (alpha > orignalAlpha) ? TT_EXACT : TT_UPPER;
+    tt.store(board.getZobristKey(), depth, alpha, flag, bestMove, ply);
+    
     return alpha;
 }
 
@@ -313,7 +376,7 @@ Move Search::findBestMove(int depth) {
         int currentIterationScore = -INFINITY_SCORE;
         bool completedDepth = true;
 
-        orderMoves(moves, scores, count, 0);
+        orderMoves(moves, scores, count, 0, bestMove);
 
         // Always search current bestMove from previous iteration first
         if (d > 1) {
@@ -356,6 +419,8 @@ Move Search::findBestMove(int depth) {
         if (completedDepth && !stopped) {
             bestMove = currentIterationBest;
             bestScore = currentIterationScore;
+
+            tt.store(board.getZobristKey(), d, bestScore, TT_EXACT, bestMove, 0);
 
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
             U64 nps = elapsed > 0 ? (nodes * 1000) / elapsed : nodes;

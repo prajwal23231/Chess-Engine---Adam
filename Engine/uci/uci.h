@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 
+
 struct ParsedMove {
     Square from;
     Square to;

@@ -172,7 +172,7 @@ void UCI::handlePosition(istringstream &iss){
     iss >> token;
 
     if(token == "startpos"){
-        handleUCINewGame();
+        board.setStartingPosition();
     }
 
     else if(token == "fen"){
@@ -401,9 +401,18 @@ void UCI::handleSetOption(istringstream& iss) {
 
     if (name == "Hash" && !value.empty()) {
         hashSizeMb = stoi(value);
-    } else if (name == "Move Overhead" && !value.empty()) {
+        search.getTT().init(hashSizeMb);
+    }
+
+    else if (name == "Clear Hash"){
+        search.getTT().clear();
+    }
+    
+    else if (name == "Move Overhead" && !value.empty()) {
         moveOverheadMs = stoi(value);
-    } else if (name == "Threads" && !value.empty()) {
+    }
+    
+    else if (name == "Threads" && !value.empty()) {
         numThreads = stoi(value);
     }
 }

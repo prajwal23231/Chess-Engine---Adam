@@ -18,6 +18,11 @@ constexpr int MAX_MOVES = 256;
 constexpr int NUM_PIECE_TYPE = 6;
 
 
+constexpr int INFINITY_SCORE = 300000;
+constexpr int MATE_SCORE     = 100000;
+constexpr int MATE_THRESHOLD = MATE_SCORE - MAX_PLYS;
+
+
 enum Color { WHITE, BLACK, BOTH };
 
 enum Piece {
