@@ -999,18 +999,27 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
     // White castling evaluation
     if (wKing == G1 || wKing == C1) {
         score.mg += 30; // Safely castled!
-    } else if (board.getCastlingRights() & (CASTLE_WK | CASTLE_WQ)) {
+    }
+    
+    else if (board.getCastlingRights() & (CASTLE_WK | CASTLE_WQ)) {
         score.mg += 15; // Still holds right to castle
-    } else {
+    }
+    
+    else {
         score.mg -= 35; // Trapped in center with no castling rights!
     }
+
 
     // Black castling evaluation
     if (bKing == G8 || bKing == C8) {
         score.mg -= 30; // Safely castled!
-    } else if (board.getCastlingRights() & (CASTLE_BK | CASTLE_BQ)) {
+    }
+    
+    else if (board.getCastlingRights() & (CASTLE_BK | CASTLE_BQ)) {
         score.mg -= 15; // Still holds right to castle
-    } else {
+    }
+    
+    else {
         score.mg += 35; // Trapped in center with no castling rights!
     }
 }
@@ -1105,11 +1114,11 @@ int Evaluator::getMaterialScaleFactor(const Board& board){
 
         if(popCount(bp) == 1 && wp == 0){
             Square psq = static_cast<Square>(lsb(bp)^56);
-            Square whiteKing = static_cast<Square>(lsb(wp) ^ 56);
-            Square blackKing = static_cast<Square>(lsb(bp) ^ 56);
+            Square attackKing = static_cast<Square>(lsb(bk) ^ 56);
+            Square defendKing = static_cast<Square>(lsb(wk) ^ 56);
 
             Color stm = (board.getMovingSide() == WHITE ? BLACK : WHITE);
-            bool iswon = KPKBitbase::probe(bk, psq, wk, BLACK);
+            bool iswon = KPKBitbase::probe(attackKing, psq, defendKing, BLACK);
 
             return iswon ? 128 : 0;
         }

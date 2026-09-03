@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
+#include "syzygy/tbprobe.h"
 
 using namespace std;
 
@@ -415,6 +416,10 @@ void UCI::handleSetOption(istringstream& iss) {
     
     else if (name == "Threads" && !value.empty()) {
         numThreads = stoi(value);
+    }
+
+    else if(name == "syzygypath"){
+        
     }
 }
 
