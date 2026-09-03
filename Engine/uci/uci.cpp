@@ -164,6 +164,7 @@ void UCI::handleQuit(){
 
 void UCI::handleUCINewGame(){
     board.setStartingPosition();
+    search.getTT().clear();
 }
 
 

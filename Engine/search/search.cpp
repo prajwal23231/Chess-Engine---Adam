@@ -45,7 +45,7 @@ Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator)
 }
 
 
-int Search::scoreMove(const Move& move, int ply,const Move& ttMove = Move()) {
+int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
     // tt move is top priority
     if(ttMove.getValue() != 0 && move.getValue() == ttMove.getValue()){
         return 10000000;
@@ -101,7 +101,7 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove = Move()) {
 
 
 
-void Search::orderMoves(Move* moves, int* scores, int count, int ply, const Move& ttMove = Move()) {
+void Search::orderMoves(Move* moves, int* scores, int count, int ply, const Move& ttMove) {
     for (int i = 0; i < count; i++) {
         scores[i] = scoreMove(moves[i], ply, ttMove);
     }
