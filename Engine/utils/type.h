@@ -134,8 +134,8 @@ constexpr int piecePhase[NUM_PIECES] = {
 constexpr int BISHOP_PAIR_MG = 25;
 constexpr int BISHOP_PAIR_EG = 50;
 
-constexpr int passedPawnMG[RANK_SIZE] = {0, 5, 10, 20, 35, 60, 100, 0};
-constexpr int passedPawnEG[RANK_SIZE] = {0, 10, 20, 40, 70, 120, 200, 0};
+constexpr int passedPawnMG[RANK_SIZE] = {0,  5, 15, 25,  45,  80, 140, 0};
+constexpr int passedPawnEG[RANK_SIZE] = {0, 15, 30, 60, 110, 200, 350, 0};
 
 constexpr int DOUBLED_PAWN_MG = 12;
 constexpr int DOUBLED_PAWN_EG = 18;

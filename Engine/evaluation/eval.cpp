@@ -19,7 +19,7 @@ namespace {
         return std::max(std::abs(getFile(a) - getFile(b)), std::abs(getRank(a) - getRank(b)));
     }
 
-    constexpr int connectedPasserBonus[8] = { 0, 10, 20, 40, 70, 120, 200, 0 };
+    constexpr int connectedPasserBonus[8] = { 0, 15, 30, 60, 100, 180, 300, 0 };
 }
 
 
@@ -154,6 +154,10 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             else if (occ & (1ULL << stopSq)) {
                 bonusEG -= 25;
             }
+
+            else if (rank >= 4) {
+                bonusEG += (rank - 3) * 20;
+            }
             
             if (board.isSquareAttacked(promoSq, BLACK)) {
                 bonusEG -= 30;
@@ -230,7 +234,6 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             pawnEG -= BACKWARD_PAWN_EG;
         }
 
-
         wAttacks |= attacks.getWhitePawnAttack(s);
     }
 
@@ -255,6 +258,10 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             
             else if (occ & (1ULL << stopSq)) {
                 bonusEG -= 25;
+            }
+
+            else if (mirrored >= 4) {
+                bonusEG += (mirrored - 3) * 20;
             }
             
             if (board.isSquareAttacked(promoSq, WHITE)) {
@@ -993,7 +1000,7 @@ void Evaluator::calculateHangingPieces(const Board& board, EvalInfo& score){
 
 
 int Evaluator::calculateMatingScore(const Board& board, int egScore){
-    if(abs(egScore < 350)) return egScore;
+    if(abs(egScore) < 350) return egScore;
 
     Color winingSide = (egScore > 0) ? WHITE : BLACK;
     Color losingSide = (egScore > 0) ? BLACK : WHITE;
