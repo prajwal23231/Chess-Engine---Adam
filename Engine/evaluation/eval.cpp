@@ -1114,11 +1114,11 @@ int Evaluator::getMaterialScaleFactor(const Board& board){
 
         if(popCount(bp) == 1 && wp == 0){
             Square psq = static_cast<Square>(lsb(bp)^56);
-            Square attackKing = static_cast<Square>(lsb(bk) ^ 56);
-            Square defendKing = static_cast<Square>(lsb(wk) ^ 56);
+            Square attackKing = static_cast<Square>(bk ^ 56);
+            Square defendKing = static_cast<Square>(wk ^ 56);
 
             Color stm = (board.getMovingSide() == WHITE ? BLACK : WHITE);
-            bool iswon = KPKBitbase::probe(attackKing, psq, defendKing, BLACK);
+            bool iswon = KPKBitbase::probe(attackKing, psq, defendKing, stm);
 
             return iswon ? 128 : 0;
         }
