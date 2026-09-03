@@ -1,6 +1,7 @@
 #pragma once
 #include "utils/type.h"
 #include "pawn_table.h"
+#include "hash/kpk.h"
 
 class Board;
 

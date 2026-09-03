@@ -5,12 +5,14 @@
 #include "hash/zobrist.h"
 #include "utils/tools.h"
 #include <iostream>
+#include "hash/kpk.h"
 
 using namespace std;
 
 int main() {
     Zobrist::init();
     Tools::initTools();
+    KPKBitbase::init();
 
     Board board;
     MoveGenerator movegen(board);

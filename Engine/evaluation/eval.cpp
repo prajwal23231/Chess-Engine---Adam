@@ -1086,11 +1086,34 @@ int Evaluator::getMaterialScaleFactor(const Board& board){
     U64 br = board.getBitboard(BR);
     U64 wq = board.getBitboard(WQ);
     U64 bq = board.getBitboard(BQ);
+    Square wk = board.getKingSquare(WHITE);
+    Square bk = board.getKingSquare(BLACK);
 
     int wMajors = popCount(wr | wq);
     int bMajors = popCount(br | bq);
     int wMinors = popCount(wn | wb);
     int bMinors = popCount(bn | bb);
+
+
+    if(wMajors + bMajors + wMinors + bMinors == 0){
+        if(popCount(wp) == 1 && bp == 0){
+            Square psq = static_cast<Square>(lsb(wp));
+
+            bool iswon = KPKBitbase::probe(wk, psq, bk, board.getMovingSide());
+            return iswon ? 128 : 0;
+        }
+
+        if(popCount(bp) == 1 && wp == 0){
+            Square psq = static_cast<Square>(lsb(bp)^56);
+            Square whiteKing = static_cast<Square>(lsb(wp) ^ 56);
+            Square blackKing = static_cast<Square>(lsb(bp) ^ 56);
+
+            Color stm = (board.getMovingSide() == WHITE ? BLACK : WHITE);
+            bool iswon = KPKBitbase::probe(bk, psq, wk, BLACK);
+
+            return iswon ? 128 : 0;
+        }
+    }
 
     if(!wp && wMajors == 0 && popCount(wn) == 2 && wMinors == 2 && (bMajors + bMinors + popCount(bp)) == 0){
         return 0;
