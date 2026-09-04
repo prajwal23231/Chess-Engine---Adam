@@ -18,7 +18,7 @@ private:
 
     static inline void setWin(Square wking, Square pawnsq, Square bking, Color stm){
         int idx = encodeIndex(wking, pawnsq, bking, stm);
-        bitbase[idx/32] |- (1U<<(idx%32));
+        bitbase[idx/32] |= (1U<<(idx%32));
     }
 
     static inline bool isWin(Square wking, Square pawnsq, Square bking, Color stm){

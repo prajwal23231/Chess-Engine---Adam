@@ -27,12 +27,6 @@ int KPKBitbase::encodeIndex(Square wking, Square pawnSq, Square bking, Color stm
 }
 
 
-bool KPKBitbase::probe(Square wking, Square pawnSq, Square bking, Color stm){
-    int idx = encodeIndex(wking, pawnSq, bking, stm);
-    return (bitbase[idx/32] >> (idx % 32)) & 1;
-}
-
-
 void KPKBitbase::init(){
     if(initialised) return ;
 

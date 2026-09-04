@@ -27,7 +27,7 @@ int Evaluator::evaluate(const Board& board){
     calculatePawns(board, score);
 
     U64 key = board.getPawnKey();
-    PawnEntry* entry = pawntable.probe(key);
+    PawnTableEntry* entry = pawntable.probe(key);
 
     calculateRook(board, score, entry);
     calculateKnightOutpost(board, score, entry);
@@ -109,7 +109,7 @@ void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
 
 void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
     U64 key = board.getPawnKey();
-    PawnEntry* entry = pawntable.probe(key);
+    PawnTableEntry* entry = pawntable.probe(key);
 
     if(entry){
         score.mg += entry->mg;
@@ -359,7 +359,7 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
 }
 
 
-void Evaluator::calculateMobility(const Board& board, EvalInfo& score, PawnEntry* entry){
+void Evaluator::calculateMobility(const Board& board, EvalInfo& score, PawnTableEntry* entry){
     U64 wn = board.getBitboard(WN);
     U64 bn = board.getBitboard(BN);
 
@@ -476,7 +476,7 @@ void Evaluator::calculateMobility(const Board& board, EvalInfo& score, PawnEntry
 
 
 
-void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* entry){
+void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnTableEntry* entry){
     U64 wr = board.getBitboard(WR);
     U64 br = board.getBitboard(BR);
 
@@ -663,7 +663,7 @@ void Evaluator::calculateRook(const Board& board, EvalInfo& score, PawnEntry* en
 }
 
 
-void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, PawnEntry* entry){
+void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, PawnTableEntry* entry){
     U64 wn = board.getBitboard(WN) & entry->pawnAttacks[WHITE];
     U64 bn = board.getBitboard(BN) & entry->pawnAttacks[BLACK];
 

@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
-#include "syzygy/tbprobe.h"
+#include "syzygy/syzygy.h"
 
 using namespace std;
 
@@ -419,7 +419,7 @@ void UCI::handleSetOption(istringstream& iss) {
     }
 
     else if(name == "syzygypath"){
-        
+        Syzygy::init(value);
     }
 }
 

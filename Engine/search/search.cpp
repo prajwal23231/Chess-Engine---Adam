@@ -2,6 +2,7 @@
 #include "utils/bitboard_utilities.h"
 #include <iostream>
 #include <algorithm>
+#include "syzygy/syzygy.h"
 
 using namespace std;
 using namespace Bitboard;
@@ -220,6 +221,18 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
     if (ply >= MAX_PLYS - 1) return evaluator.evaluate(board);
 
 
+    // --- Syzygy WDL Search Probe ---
+    if(depth >= 1 && ply > 0 && board.getHalfMoveClock() == 0){
+        WDLResult wdl = Syzygy::probeWDL(board);
+
+        if(wdl != TB_RESULT_FAIL){
+            if(wdl == TB_RESULT_DRAW) return 0;
+            if(wdl == TB_RESULT_WIN) return MATE_SCORE - MAX_PLYS + ply;
+            if(wdl == TB_RESULT_LOSS) return -MATE_SCORE + MAX_PLYS - ply;
+        }
+    }
+
+
     int orignalAlpha = alpha;
     Move ttMove;
     TTEntry* entry = tt.probe(board.getZobristKey());
@@ -374,6 +387,14 @@ Move Search::findBestMove(int depth) {
 
     if (count == 0) return Move();
     if (count == 1) return moves[0];
+
+    // --- Syzygy Root Probe ---
+    Move tbMove;
+
+    if (Syzygy::probeRoot(board, tbMove)) {
+        cout << "info string Syzygy tablebase root hit! Playing optimal move." << endl;
+        return tbMove;
+    }
 
     // Order initial root moves so default pre-search move is best heuristic move
     orderMoves(moves, scores, count, 0);

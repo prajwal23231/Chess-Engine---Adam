@@ -6,6 +6,7 @@
 #include "utils/tools.h"
 #include <iostream>
 #include "hash/kpk.h"
+#include "syzygy/syzygy.h"
 
 using namespace std;
 
@@ -13,6 +14,7 @@ int main() {
     Zobrist::init();
     Tools::initTools();
     KPKBitbase::init();
+    Syzygy::init();
 
     Board board;
     MoveGenerator movegen(board);

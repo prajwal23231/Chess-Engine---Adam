@@ -2,7 +2,7 @@
 #include "utils/type.h"
 #include <vector>
 
-struct PawnEntry{
+struct PawnTableEntry{
     U64 key = 0;
     int mg = 0;
     int eg = 0;
@@ -16,19 +16,19 @@ public:
 
     PawnTable(size_t size = DEFAULT_SIZE) : table(size), mask(size-1){}
 
-    void clear() { std::fill(table.begin(),table.end(), PawnEntry{}); }
+    void clear() { std::fill(table.begin(),table.end(), PawnTableEntry{}); }
 
-    PawnEntry* probe(U64 key){
-        PawnEntry& entry = table[key&mask];
+    PawnTableEntry* probe(U64 key){
+        PawnTableEntry& entry = table[key&mask];
         return entry.key == key ? &entry : nullptr;
     }
 
     void store(U64 key,int mg,int eg,U64 wPassed,U64 bPassed,U64 wAttacks,U64 bAttacks){
-        PawnEntry& entry = table[key & mask];
+        PawnTableEntry& entry = table[key & mask];
         entry = {key, mg, eg, {wPassed,bPassed}, {wAttacks, bAttacks}};
     }
 
 private:
-    std::vector<PawnEntry> table;
+    std::vector<PawnTableEntry> table;
     size_t mask;
 };
