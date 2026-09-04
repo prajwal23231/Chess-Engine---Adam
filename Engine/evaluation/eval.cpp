@@ -4,6 +4,7 @@
 #include "utils/tools.h"
 #include "attack/attacks.h"
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 using namespace Bitboard;
@@ -15,7 +16,7 @@ namespace {
         171, 181, 192, 203, 213, 224, 235, 245, 256
     };
 
-    constexpr int connectedPasserBonus[8] = { 0, 15, 30, 60, 100, 180, 300, 0 };
+    constexpr int connectedPasserBonus[8] = { 0, 10, 15, 25, 40, 65, 110, 0 };
 }
 
 
@@ -35,6 +36,20 @@ int Evaluator::evaluate(const Board& board){
     calculateKingSafety(board, score);
     calculateDevelopment(board, score);
     calculateHangingPieces(board, score);
+
+    // Minor piece vs lone pawns endgame adjustment
+    int wMinors = popCount(board.getBitboard(WN) | board.getBitboard(WB));
+    int bMinors = popCount(board.getBitboard(BN) | board.getBitboard(BB));
+    int wMajors = popCount(board.getBitboard(WR) | board.getBitboard(WQ));
+    int bMajors = popCount(board.getBitboard(BR) | board.getBitboard(BQ));
+
+    if (wMajors == 0 && bMajors == 0) {
+        if (wMinors == 0 && bMinors >= 1) {
+            score.eg -= 150;
+        } else if (bMinors == 0 && wMinors >= 1) {
+            score.eg += 150;
+        }
+    }
     
     score.eg = calculateMatingScore(board, score.eg);
     int scaleFactor = getMaterialScaleFactor(board);
@@ -143,20 +158,25 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             Square stopSq = static_cast<Square>(s + 8);
             Square promoSq = static_cast<Square>(getFile(s) + 56);
 
-            if (board.getKingSquare(BLACK) == stopSq) {
-                bonusEG /= 2;
-            }
-            
-            else if (occ & (1ULL << stopSq)) {
-                bonusEG -= 25;
-            }
+            U64 bPieces = board.getBitboard(BP) | board.getBitboard(BN) | board.getBitboard(BB) | board.getBitboard(BR) | board.getBitboard(BQ);
 
-            else if (rank >= 4) {
-                bonusEG += (rank - 3) * 20;
-            }
-            
-            if (board.isSquareAttacked(promoSq, BLACK)) {
-                bonusEG -= 30;
+            if (((1ULL << promoSq) | (1ULL << stopSq)) & bPieces) {
+                bonusEG = 0;
+                bonusMG = 0;
+            } else {
+                if (board.getKingSquare(BLACK) == stopSq) {
+                    bonusEG /= 2;
+                }
+                else if (occ & (1ULL << stopSq)) {
+                    bonusEG -= 25;
+                }
+                else if (board.isSquareAttacked(stopSq, BLACK)) {
+                    bonusEG -= 20;
+                }
+
+                if (board.isSquareAttacked(promoSq, BLACK)) {
+                    bonusEG -= 30;
+                }
             }
             
             Square wKing = board.getKingSquare(WHITE);
@@ -247,21 +267,26 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
 
             Square stopSq = static_cast<Square>(s - 8);
             Square promoSq = static_cast<Square>(getFile(s)); // 1st rank
-            
-            if (board.getKingSquare(WHITE) == stopSq) {
-                bonusEG /= 2;
-            }
-            
-            else if (occ & (1ULL << stopSq)) {
-                bonusEG -= 25;
-            }
 
-            else if (mirrored >= 4) {
-                bonusEG += (mirrored - 3) * 20;
-            }
-            
-            if (board.isSquareAttacked(promoSq, WHITE)) {
-                bonusEG -= 30;
+            U64 wPieces = board.getBitboard(WP) | board.getBitboard(WN) | board.getBitboard(WB) | board.getBitboard(WR) | board.getBitboard(WQ);
+
+            if (((1ULL << promoSq) | (1ULL << stopSq)) & wPieces) {
+                bonusEG = 0;
+                bonusMG = 0;
+            } else {
+                if (board.getKingSquare(WHITE) == stopSq) {
+                    bonusEG /= 2;
+                }
+                else if (occ & (1ULL << stopSq)) {
+                    bonusEG -= 25;
+                }
+                else if (board.isSquareAttacked(stopSq, WHITE)) {
+                    bonusEG -= 20;
+                }
+
+                if (board.isSquareAttacked(promoSq, WHITE)) {
+                    bonusEG -= 30;
+                }
             }
             
             Square wKing = board.getKingSquare(WHITE);
@@ -1064,6 +1089,15 @@ int Evaluator::calculateMatingScore(const Board& board, int egScore){
     Color winingSide = (egScore > 0) ? WHITE : BLACK;
     Color losingSide = (egScore > 0) ? BLACK : WHITE;
 
+    // Cornering / Mating evaluation only applies when the losing side has NO pawns and NO major/minor pieces (lone king)!
+    U64 losePawns = (losingSide == WHITE) ? board.getBitboard(WP) : board.getBitboard(BP);
+    if (losePawns != 0) return egScore;
+
+    U64 losePieces = (losingSide == WHITE) ? 
+        (board.getBitboard(WN) | board.getBitboard(WB) | board.getBitboard(WR) | board.getBitboard(WQ)) :
+        (board.getBitboard(BN) | board.getBitboard(BB) | board.getBitboard(BR) | board.getBitboard(BQ));
+    if (losePieces != 0) return egScore;
+
     Square winKing = board.getKingSquare(winingSide);
     Square loseKing = board.getKingSquare(losingSide);
 
@@ -1136,8 +1170,8 @@ int Evaluator::getMaterialScaleFactor(const Board& board){
     if(wMajors == 0 && bMajors == 0 && wMinors == 1 && bMinors == 1 && wb && bb){
         bool wLight = (wb & LIGHT_SQUARES);
         bool bLight = (bb & LIGHT_SQUARES);
-        if (wLight != bLight && (popCount(wp) + popCount(bp)) <= 2) {
-            return 64; // 50% draw scaling
+        if (wLight != bLight) {
+            return 64; // 50% draw scaling for opposite-colored bishop endgames
         }
     }
 
