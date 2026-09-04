@@ -222,15 +222,11 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
 
 
     // --- Syzygy WDL Search Probe ---
-    if(depth >= 1 && ply > 0){
+    if(depth >= 1 && ply > 0 && board.getHalfMoveClock() == 0){
         WDLResult wdl = Syzygy::probeWDL(board);
 
         if(wdl != TB_RESULT_FAIL){
-            if(wdl == TB_RESULT_DRAW) {
-                // If moving side has a material advantage, prefer drawing lines that capture material
-                int eval = evaluator.evaluate(board);
-                return (eval > 200) ? 15 : (eval < -200 ? -15 : 0);
-            }
+            if(wdl == TB_RESULT_DRAW) return 0;
             if(wdl == TB_RESULT_WIN) return MATE_SCORE - MAX_PLYS + ply;
             if(wdl == TB_RESULT_LOSS) return -MATE_SCORE + MAX_PLYS - ply;
         }
@@ -327,22 +323,18 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         board.makeMove(moves[i]);
         int score = 0;
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
-        bool isKiller = (ply < MAX_PLYS && (moves[i].getValue() == killerMoves[0][ply].getValue() || 
-                                            moves[i].getValue() == killerMoves[1][ply].getValue()));
 
-        // LMR (Late Move Reductions)
-        if (movesSearched >= 4 && depth >= 3 && isQuiet && !isKiller && !inCheck) {
-            int reduction = 1;
-            if (movesSearched >= 8 && depth >= 5) reduction = 2;
-            int reducedDepth = max(1, depth - 1 - reduction + extension);
 
-            score = -negamax(-alpha - 1, -alpha, reducedDepth, ply + 1);
+        // LMR
+        if(movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck){
+            score = -negamax(-alpha-1, -alpha, depth - 2 + extension, ply + 1);
 
-            if (score > alpha) {
-                // Re-search at full depth if reduced search beat alpha
+            if(score > alpha){
                 score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
             }
-        } else {
+        }
+
+        else{
             score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
         }
 
@@ -405,17 +397,13 @@ Move Search::findBestMove(int depth) {
     }
 
     // Order initial root moves so default pre-search move is best heuristic move
-    int rootScores[MAX_MOVES];
     orderMoves(moves, scores, count, 0);
-    for (int i = 0; i < count; i++) {
-        int bestIdx = i;
-        for (int j = i + 1; j < count; j++) {
-            if (scores[j] > scores[bestIdx]) bestIdx = j;
-        }
-        swap(scores[i], scores[bestIdx]);
-        swap(moves[i], moves[bestIdx]);
-        rootScores[i] = scores[i];
+    int initialBestIdx = 0;
+    for (int i = 1; i < count; i++) {
+        if (scores[i] > scores[initialBestIdx]) initialBestIdx = i;
     }
+    swap(moves[0], moves[initialBestIdx]);
+    swap(scores[0], scores[initialBestIdx]);
 
     Move bestMove = moves[0];
     int bestScore = -INFINITY_SCORE;
@@ -426,24 +414,30 @@ Move Search::findBestMove(int depth) {
         int alpha = -INFINITY_SCORE, beta = INFINITY_SCORE;
         Move currentIterationBest = moves[0];
         int currentIterationScore = -INFINITY_SCORE;
-        int currentIterationScores[MAX_MOVES];
         bool completedDepth = true;
 
+        orderMoves(moves, scores, count, 0, bestMove);
+
+        // Always search current bestMove from previous iteration first
         if (d > 1) {
-            // Sort root moves based on scores from previous depth
             for (int i = 0; i < count; i++) {
-                int bestIdx = i;
-                for (int j = i + 1; j < count; j++) {
-                    if (rootScores[j] > rootScores[bestIdx]) {
-                        bestIdx = j;
-                    }
+                if (moves[i].getValue() == bestMove.getValue()) {
+                    scores[i] = 10000000;
+                    break;
                 }
-                swap(rootScores[i], rootScores[bestIdx]);
-                swap(moves[i], moves[bestIdx]);
             }
         }
 
         for (int i = 0; i < count; i++) {
+            int bestIdx = i;
+            for (int j = i + 1; j < count; j++) {
+                if (scores[j] > scores[bestIdx]) {
+                    bestIdx = j;
+                }
+            }
+            swap(scores[i], scores[bestIdx]);
+            swap(moves[i], moves[bestIdx]);
+
             board.makeMove(moves[i]);
             int score = -negamax(-beta, -alpha, d - 1, 1);
             board.undoMove(moves[i]);
@@ -453,8 +447,6 @@ Move Search::findBestMove(int depth) {
                 completedDepth = false;
                 break;
             }
-
-            currentIterationScores[i] = score;
 
             if (score > alpha) {
                 alpha = score;
@@ -467,22 +459,6 @@ Move Search::findBestMove(int depth) {
         if (completedDepth && !stopped) {
             bestMove = currentIterationBest;
             bestScore = currentIterationScore;
-
-            for (int i = 0; i < count; i++) {
-                rootScores[i] = currentIterationScores[i];
-            }
-
-            // Immediately sort root moves by the newly completed depth's scores
-            for (int i = 0; i < count; i++) {
-                int bestIdx = i;
-                for (int j = i + 1; j < count; j++) {
-                    if (rootScores[j] > rootScores[bestIdx]) {
-                        bestIdx = j;
-                    }
-                }
-                swap(rootScores[i], rootScores[bestIdx]);
-                swap(moves[i], moves[bestIdx]);
-            }
 
             tt.store(board.getZobristKey(), d, bestScore, TT_EXACT, bestMove, 0);
 

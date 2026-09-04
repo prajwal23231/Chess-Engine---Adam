@@ -170,27 +170,27 @@ constexpr int BACKWARD_PAWN_SEMI_OPEN_EG = 24;
 
 constexpr int knightOutpost[2] = {18, 12};
 
-constexpr int PAWN_SHIELD_MISSING = 35; // Penalty for each missing shield pawn (MG)
-constexpr int PAWN_SHIELD_STEPPED = 18; // Penalty if shield pawn moved from rank 2 to rank 3/4
-constexpr int OPEN_FILE_NEAR_KING = 30; // Penalty for open file next to the King
+constexpr int PAWN_SHIELD_MISSING = 25; // Penalty for each missing shield pawn (MG)
+constexpr int PAWN_SHIELD_STEPPED = 10; // Penalty if shield pawn moved from rank 2 to rank 3/4
+constexpr int OPEN_FILE_NEAR_KING = 20; // Penalty for open file next to the King
 
 constexpr int KNIGHT_ATTACK_WEIGHT = 2;
 constexpr int BISHOP_ATTACK_WEIGHT = 2;
 constexpr int ROOK_ATTACK_WEIGHT   = 3;
 constexpr int QUEEN_ATTACK_WEIGHT  = 5;
 
-// Non-linear king attack danger lookup table (indexed by total attack units 0..99, max danger 350 cp)
+// Non-linear king attack danger lookup table (indexed by total attack units 0..99)
 constexpr int kingDangerTable[100] = {
-      0,   0,   2,   4,   8,  12,  18,  25,  34,  44,
-     55,  68,  82,  98, 115, 133, 152, 172, 192, 212,
-    230, 246, 260, 272, 282, 290, 297, 303, 308, 312,
-    316, 320, 323, 326, 329, 332, 335, 337, 340, 342,
-    344, 346, 348, 350, 350, 350, 350, 350, 350, 350,
-    350, 350, 350, 350, 350, 350, 350, 350, 350, 350,
-    350, 350, 350, 350, 350, 350, 350, 350, 350, 350,
-    350, 350, 350, 350, 350, 350, 350, 350, 350, 350,
-    350, 350, 350, 350, 350, 350, 350, 350, 350, 350,
-    350, 350, 350, 350, 350, 350, 350, 350, 350, 350
+      0,   0,   1,   2,   4,   6,   9,  12,  16,  20,
+     25,  30,  36,  42,  49,  56,  64,  72,  80,  88,
+     96, 104, 112, 120, 127, 134, 140, 145, 148, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150,
+    150, 150, 150, 150, 150, 150, 150, 150, 150, 150
 };
 
 

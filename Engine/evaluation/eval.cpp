@@ -152,12 +152,7 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             }
 
             else if (rank >= 4) {
-                bonusEG += (rank - 3) * 25;
-            }
-
-            // Outside passed pawn bonus (flank passers on a, b, g, h files pull enemy king away)
-            if (file <= 1 || file >= 6) {
-                bonusEG += 30;
+                bonusEG += (rank - 3) * 20;
             }
             
             if (board.isSquareAttacked(promoSq, BLACK)) {
@@ -174,9 +169,9 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 bonusEG += connectedPasserBonus[rank];
             }
 
-            else if(adjacentFileMask[file] & (rankMask[rank] | rankMask[min(7,rank+1)]) & whitePawns){
-                bonusMG += connectedPasserBonus[rank]/4;
-                bonusEG += connectedPasserBonus[rank]/2;
+            if(adjacentFileMask[file] & (rankMask[rank] | rankMask[min(7,rank+1)]) & whitePawns){
+                bonusMG += connectedPasserBonus[rank]/2;
+                bonusEG += connectedPasserBonus[rank];
             }
 
             if(board.getGamePhase() == 0){
@@ -262,12 +257,7 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             }
 
             else if (mirrored >= 4) {
-                bonusEG += (mirrored - 3) * 25;
-            }
-
-            // Outside passed pawn bonus (flank passers on a, b, g, h files pull enemy king away)
-            if (file <= 1 || file >= 6) {
-                bonusEG += 30;
+                bonusEG += (mirrored - 3) * 20;
             }
             
             if (board.isSquareAttacked(promoSq, WHITE)) {
@@ -284,9 +274,9 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
                 bonusEG += connectedPasserBonus[mirrored];
             }
 
-            else if(adjacentFileMask[file] & (rankMask[rank] | rankMask[max(0, rank-1)]) & blackPawns){
-                bonusMG += connectedPasserBonus[mirrored]/4;
-                bonusEG += connectedPasserBonus[mirrored]/2;
+            if(adjacentFileMask[file] & (rankMask[rank] | rankMask[max(0, rank-1)]) & blackPawns){
+                bonusMG += connectedPasserBonus[mirrored]/2;
+                bonusEG += connectedPasserBonus[mirrored];
             }
 
             if(board.getGamePhase() == 0){
@@ -702,8 +692,7 @@ void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, Pawn
 
 
 void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
-    // King safety is active in middlegame, or whenever queens remain on the board (prevents walking king into crossfire)
-    if(board.getGamePhase() < 6 && !board.getBitboard(WQ) && !board.getBitboard(BQ)) return ;
+    if(board.getGamePhase() < 6) return ;
 
     Square wKingSq = board.getKingSquare(WHITE);
     Square bKingSq = board.getKingSquare(BLACK);
@@ -726,14 +715,6 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
     }
 
 
-    int bAttackUnits = 0;
-    int bAttackerCount = 0;
-    int bDangerScore = 0;
-
-    int wAttackUnits = 0;
-    int wAttackerCount = 0;
-    int wDangerScore = 0;
-
     // White king safety - only apply pawn shield penalty when King is castled / on flanks
     int wFile = getFile(wKingSq);
     int wShieldPenalty = 0;
@@ -742,47 +723,34 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
         int wClampFile = clamp(wFile, 1, 6);
         for(int f = wClampFile-1; f <= wClampFile+1; f++){
             U64 pawnOnFile = wp & fileMask[f];
-            bool isKingFile = (f == wFile);
 
             if(!pawnOnFile){
                 wShieldPenalty += PAWN_SHIELD_MISSING;
-                if(isKingFile) wShieldPenalty += 30;
 
                 if(!(bp & fileMask[f])){
                     wShieldPenalty += OPEN_FILE_NEAR_KING;
-                    if(isKingFile) wShieldPenalty += 35;
                 }
+
                 else{
-                    wShieldPenalty += 20;
+                    wShieldPenalty += OPEN_FILE_NEAR_KING/2;
                 }
             }
+
+
             else{
                 int lowestRank = getRank(static_cast<Square>(lsb(pawnOnFile)));
 
                 if(lowestRank==2){
                     wShieldPenalty += PAWN_SHIELD_STEPPED;
                 }
+
                 else if(lowestRank>=3){
                     wShieldPenalty += PAWN_SHIELD_MISSING;
                 }
-                if(popCount(pawnOnFile) >= 2){
-                    wShieldPenalty += 20;
-                }
-            }
-
-            // Enemy heavy piece on open/semi-open file directed at King
-            if(!(wp & fileMask[f])){
-                if((board.getBitboard(BR) | board.getBitboard(BQ)) & fileMask[f]){
-                    bAttackUnits += 3;
-                    bAttackerCount++;
-                }
             }
         }
-
-        if(board.getBitboard(BQ)){
-            wShieldPenalty = (wShieldPenalty * 3) / 2;
-        }
-    } 
+    }
+    
     else {
         // King is uncastled in the center (d or e file)
         bool ownPawnOnKingFile = (wp & fileMask[wFile]);
@@ -811,47 +779,35 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
         int bClampFile = clamp(bFile, 1, 6);
         for(int f = bClampFile-1; f <= bClampFile+1; f++){
             U64 pawnOnFile = bp & fileMask[f];
-            bool isKingFile = (f == bFile);
 
             if(!pawnOnFile){
                 bShieldPenalty += PAWN_SHIELD_MISSING;
-                if(isKingFile) bShieldPenalty += 30;
 
                 if(!(wp & fileMask[f])){
                     bShieldPenalty += OPEN_FILE_NEAR_KING;
-                    if(isKingFile) bShieldPenalty += 35;
                 }
+
                 else{
-                    bShieldPenalty += 20;
+                    bShieldPenalty += OPEN_FILE_NEAR_KING/2;
                 }
             }
+
+
             else{
                 int highestRank = getRank(static_cast<Square>(63 - __builtin_clzll(pawnOnFile)));
+
 
                 if(highestRank==5){
                     bShieldPenalty += PAWN_SHIELD_STEPPED;
                 }
+
                 else if(highestRank<=4){
                     bShieldPenalty += PAWN_SHIELD_MISSING;
                 }
-                if(popCount(pawnOnFile) >= 2){
-                    bShieldPenalty += 20;
-                }
             }
-
-            // Enemy heavy piece on open/semi-open file directed at King
-            if(!(bp & fileMask[f])){
-                if((board.getBitboard(WR) | board.getBitboard(WQ)) & fileMask[f]){
-                    wAttackUnits += 3;
-                    wAttackerCount++;
-                }
-            }
-        }
-
-        if(board.getBitboard(WQ)){
-            bShieldPenalty = (bShieldPenalty * 3) / 2;
         }
     } 
+    
     else {
         // King is uncastled in the center (d or e file)
         bool ownPawnOnKingFile = (bp & fileMask[bFile]);
@@ -877,6 +833,12 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
     U64 bKingZone = attacks.getKingAttack(bKingSq) | (1ULL<<bKingSq);
     bKingZone |= bKingZone>>8;
+
+
+
+    int bAttackUnits = 0;
+    int bAttackerCount = 0;
+    int bDangerScore = 0;
 
     U64 bn = board.getBitboard(BN);
 
@@ -930,7 +892,7 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
     }
 
 
-    if(bAttackerCount >= 2 || (bAttackerCount >= 1 && board.getBitboard(BQ) && bAttackUnits >= 5)){
+    if(bAttackerCount >= 2){
         bDangerScore = kingDangerTable[min(bAttackUnits,99)];
 
         if(!board.getBitboard(BQ)){
@@ -940,6 +902,10 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
 
 
 
+
+    int wAttackUnits = 0;
+    int wAttackerCount = 0;
+    int wDangerScore = 0;
 
     U64 wn = board.getBitboard(WN);
 
@@ -993,7 +959,7 @@ void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
     }
 
 
-    if(wAttackerCount >= 2 || (wAttackerCount >= 1 && board.getBitboard(WQ) && wAttackUnits >= 5)){
+    if(wAttackerCount >= 2){
         wDangerScore = kingDangerTable[min(wAttackUnits,99)];
         
         if(!board.getBitboard(WQ)){
@@ -1061,34 +1027,31 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
 
 
 void Evaluator::calculateHangingPieces(const Board& board, EvalInfo& score){
-    Color stm = board.getMovingSide();
+    for(int p=WN; p<=WQ; p++){
+        U64 bb = board.getBitboard(static_cast<Piece>(p));
 
-    if (stm == WHITE) {
-        // White is to move: White can capture Black's undefended/hanging pieces on this turn!
-        for(int p=BN; p<=BQ; p++){
-            U64 bb = board.getBitboard(static_cast<Piece>(p));
-            while(bb){
-                Square sq = static_cast<Square>(popLSB(bb));
-                if(board.isSquareAttacked(sq, WHITE) && !board.isSquareAttacked(sq, BLACK)){
-                    int pieceType = (p < BP ? p : p - BP);
-                    int penalty = mg_value[pieceType] / 4;
-                    score.mg += penalty;
-                    score.eg += penalty;
-                }
+        while(bb){
+            Square sq = static_cast<Square>(popLSB(bb));
+            
+            if(board.isSquareAttacked(sq, BLACK) && !board.isSquareAttacked(sq, WHITE)){
+                int penalty = mg_value[p] / 4;
+                score.mg -= penalty;
+                score.eg -= penalty;
             }
         }
-    } else {
-        // Black is to move: Black can capture White's undefended/hanging pieces on this turn!
-        for(int p=WN; p<=WQ; p++){
-            U64 bb = board.getBitboard(static_cast<Piece>(p));
-            while(bb){
-                Square sq = static_cast<Square>(popLSB(bb));
-                if(board.isSquareAttacked(sq, BLACK) && !board.isSquareAttacked(sq, WHITE)){
-                    int pieceType = (p < BP ? p : p - BP);
-                    int penalty = mg_value[pieceType] / 4;
-                    score.mg -= penalty;
-                    score.eg -= penalty;
-                }
+    }
+
+
+    for(int p=BN; p<=BQ; p++){
+        U64 bb = board.getBitboard(static_cast<Piece>(p));
+
+        while(bb){
+            Square sq = static_cast<Square>(popLSB(bb));
+            
+            if(board.isSquareAttacked(sq, WHITE) && !board.isSquareAttacked(sq, BLACK)){
+                int penalty = mg_value[p] / 4;
+                score.mg += penalty;
+                score.eg += penalty;
             }
         }
     }
@@ -1154,7 +1117,7 @@ int Evaluator::getMaterialScaleFactor(const Board& board){
             Square attackKing = static_cast<Square>(bk ^ 56);
             Square defendKing = static_cast<Square>(wk ^ 56);
 
-            Color stm = (board.getMovingSide() == BLACK ? WHITE : BLACK);
+            Color stm = (board.getMovingSide() == WHITE ? BLACK : WHITE);
             bool iswon = KPKBitbase::probe(attackKing, psq, defendKing, stm);
 
             return iswon ? 128 : 0;
