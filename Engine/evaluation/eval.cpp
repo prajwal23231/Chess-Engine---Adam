@@ -1084,12 +1084,13 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
 void Evaluator::calculateHangingPieces(const Board& board, EvalInfo& score){
     for(int p=WN; p<=WQ; p++){
         U64 bb = board.getBitboard(static_cast<Piece>(p));
+        int pieceType = p - WP;
 
         while(bb){
             Square sq = static_cast<Square>(popLSB(bb));
             
             if(board.isSquareAttacked(sq, BLACK) && !board.isSquareAttacked(sq, WHITE)){
-                int penalty = mg_value[p] / 4;
+                int penalty = mg_value[pieceType] / 4;
                 score.mg -= penalty;
                 score.eg -= penalty;
             }
@@ -1099,12 +1100,13 @@ void Evaluator::calculateHangingPieces(const Board& board, EvalInfo& score){
 
     for(int p=BN; p<=BQ; p++){
         U64 bb = board.getBitboard(static_cast<Piece>(p));
+        int pieceType = p - BP;
 
         while(bb){
             Square sq = static_cast<Square>(popLSB(bb));
             
             if(board.isSquareAttacked(sq, WHITE) && !board.isSquareAttacked(sq, BLACK)){
-                int penalty = mg_value[p] / 4;
+                int penalty = mg_value[pieceType] / 4;
                 score.mg += penalty;
                 score.eg += penalty;
             }

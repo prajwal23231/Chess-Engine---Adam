@@ -73,7 +73,13 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
         int attackerType = (moved >= BP ? moved - BP : moved);
         int victimType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
 
-        return 100000 + (mvvPieceValues[victimType] * 10 - mvvPieceValues[attackerType]);
+        int diff = mvvPieceValues[victimType] * 10 - mvvPieceValues[attackerType];
+        if (mvvPieceValues[victimType] >= mvvPieceValues[attackerType]) {
+            return 100000 + diff;
+        } else {
+            // Bad/losing capture: order after killer moves
+            return 70000 + diff;
+        }
     }
 
 
@@ -86,14 +92,14 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
 
     // History heuristic
     Color side = board.getMovingSide();
-    int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 70000);
+    int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 65000);
 
 
     if(move.isCastle()){
         Square to = move.getTo();
         Piece myPawn = (side == WHITE ? WP : BP);
         int shieldCount = popCount(board.getBitboard(myPawn) & castleShieldMask[to]);
-        return historyScore + (board.getGamePhase() * 1100) + (shieldCount * 2500);
+        return min(historyScore + (board.getGamePhase() * 1100) + (shieldCount * 2500), 75000);
     }
 
 
@@ -266,30 +272,38 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
     Color opp = (movingSide == WHITE ? BLACK : WHITE);
     bool inCheck = board.isSquareAttacked(kingSq, opp);
 
-    if(depth <=2 && !inCheck && abs(beta) < MATE_THRESHOLD){
-        int eval = evaluator.evaluate(board);
-        int margin = 120 * depth;
-        
-        if(eval - margin >= beta){
-            return beta;
+    int staticEval = 0;
+    bool evalEvaluated = false;
+
+    if(!inCheck && abs(beta) < MATE_THRESHOLD){
+        // Reverse Futility Pruning (RFP) for depth <= 3
+        if(depth <= 3){
+            staticEval = evaluator.evaluate(board);
+            evalEvaluated = true;
+            int margin = 120 * depth;
+            if(staticEval - margin >= beta){
+                return beta;
+            }
         }
-    }
 
+        // Null Move Pruning (NMP)
+        constexpr int R = 2; // reduction factor (2 plies)
+        if(allowNull && depth >= 3 && board.hasNonPawnMaterial(movingSide)){
+            if(!evalEvaluated){
+                staticEval = evaluator.evaluate(board);
+                evalEvaluated = true;
+            }
 
-    constexpr int R = 2; // reduction factor (2 piles)
+            if(staticEval >= beta){
+                board.makeNullMove();
+                int NullScore = -negamax(-beta, -beta+1, depth-1-R, ply+1, false);
+                board.undoNullMove();
 
-    if(allowNull && depth >= 3 && !inCheck && abs(beta) < MATE_THRESHOLD && board.hasNonPawnMaterial(movingSide)){
-        int staticEval = evaluator.evaluate(board);
+                if (stopped || isTimeUp()) return 0;
 
-        if(staticEval >= beta){
-            board.makeNullMove();
-            int NullScore = -negamax(-beta, -beta+1, depth-1-R, ply+1, false);
-            board.undoNullMove();
-
-            if (stopped || isTimeUp()) return 0;
-
-            if(NullScore >= beta){
-                return NullScore>=MATE_THRESHOLD ? beta : NullScore;
+                if(NullScore >= beta){
+                    return NullScore>=MATE_THRESHOLD ? beta : NullScore;
+                }
             }
         }
     }
@@ -331,7 +345,11 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
             // Non-PV moves: null-window search with LMR
             int reduction = 0;
             if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck) {
-                reduction = 1;
+                if (movesSearched >= 8 && depth >= 5) {
+                    reduction = 2;
+                } else {
+                    reduction = 1;
+                }
             }
 
             score = -negamax(-alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
