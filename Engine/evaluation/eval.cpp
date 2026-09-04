@@ -158,11 +158,14 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             Square stopSq = static_cast<Square>(s + 8);
             Square promoSq = static_cast<Square>(getFile(s) + 56);
 
-            U64 bPieces = board.getBitboard(BP) | board.getBitboard(BN) | board.getBitboard(BB) | board.getBitboard(BR) | board.getBitboard(BQ);
+            U64 bPieces = board.getBitboard(BP) | board.getBitboard(BN) | board.getBitboard(BB) | board.getBitboard(BR) | board.getBitboard(BQ) | board.getBitboard(BK);
 
             if (((1ULL << promoSq) | (1ULL << stopSq)) & bPieces) {
                 bonusEG = 0;
                 bonusMG = 0;
+                if (rank == 6 && ((1ULL << promoSq) & bPieces)) {
+                    bonusEG -= 80;
+                }
             } else {
                 if (board.getKingSquare(BLACK) == stopSq) {
                     bonusEG /= 2;
@@ -268,11 +271,14 @@ void Evaluator::calculatePawns(const Board& board,EvalInfo& score){
             Square stopSq = static_cast<Square>(s - 8);
             Square promoSq = static_cast<Square>(getFile(s)); // 1st rank
 
-            U64 wPieces = board.getBitboard(WP) | board.getBitboard(WN) | board.getBitboard(WB) | board.getBitboard(WR) | board.getBitboard(WQ);
+            U64 wPieces = board.getBitboard(WP) | board.getBitboard(WN) | board.getBitboard(WB) | board.getBitboard(WR) | board.getBitboard(WQ) | board.getBitboard(WK);
 
             if (((1ULL << promoSq) | (1ULL << stopSq)) & wPieces) {
                 bonusEG = 0;
                 bonusMG = 0;
+                if (mirrored == 6 && ((1ULL << promoSq) & wPieces)) {
+                    bonusEG -= 80;
+                }
             } else {
                 if (board.getKingSquare(WHITE) == stopSq) {
                     bonusEG /= 2;

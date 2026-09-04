@@ -401,24 +401,23 @@ void UCI::handleSetOption(istringstream& iss) {
         value += token;
     }
 
-    if (name == "Hash" && !value.empty()) {
+    string lowerName = name;
+    for (char& c : lowerName) c = tolower(c);
+
+    if (lowerName == "hash" && !value.empty()) {
         hashSizeMb = stoi(value);
         search.getTT().init(hashSizeMb);
     }
-
-    else if (name == "Clear Hash"){
+    else if (lowerName == "clear hash"){
         search.getTT().clear();
     }
-    
-    else if (name == "Move Overhead" && !value.empty()) {
+    else if (lowerName == "move overhead" && !value.empty()) {
         moveOverheadMs = stoi(value);
     }
-    
-    else if (name == "Threads" && !value.empty()) {
+    else if (lowerName == "threads" && !value.empty()) {
         numThreads = stoi(value);
     }
-
-    else if(name == "syzygypath"){
+    else if (lowerName == "syzygypath"){
         Syzygy::init(value);
     }
 }
