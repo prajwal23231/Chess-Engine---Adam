@@ -14,6 +14,7 @@ enum WDLResult{
 
 class Syzygy{
 public:
+    static bool init(const std::string& path="Engine/tablebase/wdl;Engine/tablebase/dtz");
     static int getMaxPieces();
     static WDLResult probeWDL(const Board& board);
     static bool probeRoot(const Board& board, Move& bestMove);
