@@ -324,18 +324,27 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         int score = 0;
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
 
+        if (movesSearched == 0) {
+            // PV candidate: full window search
+            score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
+        } else {
+            // Non-PV moves: null-window search with LMR
+            int reduction = 0;
+            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck) {
+                reduction = 1;
+            }
 
-        // LMR
-        if(movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck){
-            score = -negamax(-alpha-1, -alpha, depth - 2 + extension, ply + 1);
+            score = -negamax(-alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
 
-            if(score > alpha){
+            // Re-search at full depth if reduced search beat alpha
+            if (reduction > 0 && score > alpha) {
+                score = -negamax(-alpha - 1, -alpha, depth - 1 + extension, ply + 1);
+            }
+
+            // Re-search with full window if score beat alpha and hasn't exceeded beta
+            if (score > alpha && score < beta) {
                 score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
             }
-        }
-
-        else{
-            score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
         }
 
         board.undoMove(moves[i]);
@@ -439,7 +448,15 @@ Move Search::findBestMove(int depth) {
             swap(moves[i], moves[bestIdx]);
 
             board.makeMove(moves[i]);
-            int score = -negamax(-beta, -alpha, d - 1, 1);
+            int score = 0;
+            if (i == 0) {
+                score = -negamax(-beta, -alpha, d - 1, 1);
+            } else {
+                score = -negamax(-alpha - 1, -alpha, d - 1, 1);
+                if (score > alpha && score < beta) {
+                    score = -negamax(-beta, -alpha, d - 1, 1);
+                }
+            }
             board.undoMove(moves[i]);
 
             // If stopped or timed out during evaluation of this move, abort this depth completely!

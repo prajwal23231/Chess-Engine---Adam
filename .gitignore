@@ -1,3 +1,5 @@
-
 *.bin
 fastchess.exe
+ADAM_base.exe
+*.pgn
+config.json

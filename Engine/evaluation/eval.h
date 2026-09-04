@@ -39,4 +39,5 @@ private:
 	int calculateMatingScore(const Board& board, int egScore);
 	int getMaterialScaleFactor(const Board& board);
 	void calculateBishopTrappedAndBad(const Board& board, EvalInfo& score);
+	void calculatePassedPawns(const Board& board, EvalInfo& score, PawnTableEntry* entry);
 };
