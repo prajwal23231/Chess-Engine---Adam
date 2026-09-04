@@ -288,8 +288,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
 
             if (stopped || isTimeUp()) return 0;
 
-            if(NullScore >= beta && NullScore >= MATE_THRESHOLD){
-                return NullScore; 
+            if(NullScore >= beta){
+                return NullScore>=MATE_THRESHOLD ? beta : NullScore;
             }
         }
     }
