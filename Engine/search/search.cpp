@@ -375,7 +375,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
             if (!isKiller) {
                 Square oppKing = board.getKingSquare(opp);
                 bool givesCheck = board.isSquareAttacked(oppKing, movingSide);
-                if (!givesCheck && staticEval + 120 * depth <= alpha) {
+                if (!givesCheck && staticEval + 100 * depth <= alpha) {
                     board.undoMove(moves[i]);
                     continue;
                 }
