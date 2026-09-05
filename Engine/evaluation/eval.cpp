@@ -57,7 +57,7 @@ int Evaluator::evaluate(const Board& board){
     score.eg = (score.eg*scaleFactor)/128;
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
-    constexpr int TEMPO = 10;
+    constexpr int TEMPO = 15;
     return mult * interpolate(score, phase) + TEMPO;
 }
 
