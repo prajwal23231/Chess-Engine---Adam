@@ -377,7 +377,16 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
                             (moves[i].getValue() == killerMoves[0][ply].getValue() || 
                              moves[i].getValue() == killerMoves[1][ply].getValue());
 
-            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck && !isKiller) {
+            bool isPawnTo7th = false;
+            Piece moved = moves[i].getMovedPiece();
+            if (moved == WP || moved == BP) {
+                int toRank = getRank(moves[i].getTo());
+                if ((movingSide == WHITE && toRank == 6) || (movingSide == BLACK && toRank == 1)) {
+                    isPawnTo7th = true;
+                }
+            }
+
+            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck && !isKiller && !isPawnTo7th) {
                 if (movesSearched >= 8 && depth >= 5) {
                     reduction = 2;
                 } else {
