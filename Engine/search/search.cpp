@@ -42,6 +42,8 @@ Search::Search(Board& board, MoveGenerator& movegen, Evaluator& evaluator)
     : board(board), movegen(movegen), evaluator(evaluator) {
     memset(killerMoves, 0, sizeof(killerMoves));
     memset(historyTable, 0, sizeof(historyTable));
+    memset(counterMoves, 0, sizeof(counterMoves));
+    memset(searchStack, 0, sizeof(searchStack));
     tt.init(64);
 }
 
@@ -83,15 +85,27 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
     }
 
 
+    Color side = board.getMovingSide();
+
     // Killer moves
     if (ply < MAX_PLYS) {
         if (killerMoves[0][ply].getValue() == move.getValue()) return 90000;
+    }
+
+    // Counter-move heuristic
+    if (ply > 0 && ply < MAX_PLYS) {
+        Move prev = searchStack[ply - 1];
+        if (prev.getValue() != 0 && counterMoves[side][prev.getFrom()][prev.getTo()].getValue() == move.getValue()) {
+            return 85000;
+        }
+    }
+
+    if (ply < MAX_PLYS) {
         if (killerMoves[1][ply].getValue() == move.getValue()) return 80000;
     }
 
 
     // History heuristic
-    Color side = board.getMovingSide();
     int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 65000);
 
 
@@ -334,6 +348,9 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         swap(scores[i], scores[bestIdx]);
         swap(moves[i], moves[bestIdx]);
 
+        if (ply < MAX_PLYS) {
+            searchStack[ply] = moves[i];
+        }
         board.makeMove(moves[i]);
         int score = 0;
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
@@ -373,11 +390,17 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         if (score >= beta) {
             bestMove = moves[i];
 
-            // Beta cutoff: update killer moves and history heuristic for quiet moves
+            // Beta cutoff: update killer moves, counter move, and history heuristic for quiet moves
             if (!moves[i].isCapture() && !moves[i].isPromotion()) {
                 if (ply < MAX_PLYS && killerMoves[0][ply].getValue() != moves[i].getValue()) {
                     killerMoves[1][ply] = killerMoves[0][ply];
                     killerMoves[0][ply] = moves[i];
+                }
+                if (ply > 0 && ply < MAX_PLYS) {
+                    Move prev = searchStack[ply - 1];
+                    if (prev.getValue() != 0) {
+                        counterMoves[movingSide][prev.getFrom()][prev.getTo()] = moves[i];
+                    }
                 }
                 historyTable[movingSide][moves[i].getFrom()][moves[i].getTo()] += depth * depth;
             }
@@ -407,6 +430,8 @@ Move Search::findBestMove(int depth) {
 
     memset(killerMoves, 0, sizeof(killerMoves));
     memset(historyTable, 0, sizeof(historyTable));
+    memset(counterMoves, 0, sizeof(counterMoves));
+    memset(searchStack, 0, sizeof(searchStack));
 
     Move moves[MAX_MOVES];
     int scores[MAX_MOVES];
@@ -465,6 +490,7 @@ Move Search::findBestMove(int depth) {
             swap(scores[i], scores[bestIdx]);
             swap(moves[i], moves[bestIdx]);
 
+            searchStack[0] = moves[i];
             board.makeMove(moves[i]);
             int score = 0;
             if (i == 0) {

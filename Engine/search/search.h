@@ -40,6 +40,8 @@ private:
     // Search heuristics
     Move killerMoves[2][MAX_PLYS];
     int historyTable[2][BOARD_SIZE][BOARD_SIZE];
+    Move counterMoves[2][BOARD_SIZE][BOARD_SIZE];
+    Move searchStack[MAX_PLYS];
 
     int negamax(int alpha, int beta, int depth, int ply, bool allowNull = true);
     int quiescence(int alpha, int beta, int ply);
