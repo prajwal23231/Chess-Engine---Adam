@@ -111,15 +111,26 @@ void Evaluator::calculatePST(const Board& board, EvalInfo& score){
 void Evaluator::calculateBishopPair(const Board& board, EvalInfo& score){
     U64 wBb = board.getBitboard(WB);
     U64 bBb = board.getBitboard(BB);
+    int totalPawns = -1;
 
     if((wBb & LIGHT_SQUARES) && (wBb & DARK_SQUARES)){
         score.mg += BISHOP_PAIR_MG;
         score.eg += BISHOP_PAIR_EG;
+        totalPawns = popCount(board.getBitboard(WP) | board.getBitboard(BP));
+        if(totalPawns <= 8){
+            score.eg += (8 - totalPawns) * 3;
+        }
     }
 
     if((bBb & LIGHT_SQUARES) && (bBb & DARK_SQUARES)){
         score.mg -= BISHOP_PAIR_MG;
         score.eg -= BISHOP_PAIR_EG;
+        if(totalPawns == -1){
+            totalPawns = popCount(board.getBitboard(WP) | board.getBitboard(BP));
+        }
+        if(totalPawns <= 8){
+            score.eg -= (8 - totalPawns) * 3;
+        }
     }
 }
 
