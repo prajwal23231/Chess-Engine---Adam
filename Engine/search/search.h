@@ -33,7 +33,7 @@ private:
     TranspositionTable tt;
 
     U64 nodes = 0;
-    long long timeLimitMs = 4000;
+    long long timeLimitMs = 5000;
     Clock::time_point startTime;
     bool stopped = false;
 

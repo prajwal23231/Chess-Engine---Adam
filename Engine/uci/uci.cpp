@@ -322,7 +322,7 @@ void UCI::handleGo(istringstream& iss){
                 if (availableTime >= 1800000) {
                     allocatedTime = (availableTime / 120) + (myInc * 3 / 5);
                     allocatedTime = min(allocatedTime, 15000LL); // Max 15s
-                    allocatedTime = max(allocatedTime, 4000LL);  // Min 4s
+                    allocatedTime = max(allocatedTime, 5000LL);  // Min 5s
                 }
                 // 2. 20+0: 1,200,000 ms <= availableTime < 1,800,000 ms (20–30 min)
                 // Target: ~3–10 sec/move
@@ -342,8 +342,8 @@ void UCI::handleGo(istringstream& iss){
                 // Target: 10+0 -> ~1–4 sec/move, 10+5 -> ~1–5 sec/move
                 else if (availableTime >= 400000) {
                     allocatedTime = (availableTime / 180) + (myInc / 2);
-                    long long maxRapidCap = (myInc >= 4000) ? 5000LL : 4000LL;
-                    allocatedTime = min(allocatedTime, maxRapidCap); // Max 4s (10+0) or 5s (10+5)
+                    long long maxRapidCap = 5000LL;
+                    allocatedTime = min(allocatedTime, maxRapidCap); // Max 5s
                     allocatedTime = max(allocatedTime, 1000LL);      // Min 1s
                 }
                 // 5. Blitz standard: 100,000 ms <= availableTime < 400,000 ms (1.5–6.5 min, e.g. 3m/5m)
@@ -378,7 +378,7 @@ void UCI::handleGo(istringstream& iss){
 
             search.setMoveTime(allocatedTime);
         } else {
-            search.setMoveTime(3000); // 3-second default if no clock provided
+            search.setMoveTime(5000); // 5-second default if no clock provided
         }
     }
 
