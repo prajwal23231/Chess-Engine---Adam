@@ -344,6 +344,17 @@ void Evaluator::calculatePassedPawns(const Board& board, EvalInfo& score, PawnTa
             bonusEG -= 25;
         }
 
+        // Defense and attack status of the passed pawn itself
+        bool wDefended = board.isSquareAttacked(s, WHITE);
+        bool wAttacked = board.isSquareAttacked(s, BLACK);
+        if (wAttacked && !wDefended) {
+            bonusEG /= 2;
+            bonusMG /= 2;
+        } else if (wDefended) {
+            bonusEG += 15;
+            bonusMG += 10;
+        }
+
         bonusEG += (5 - distance(wKing, s)) * 6;
         bonusEG -= (5 - distance(bKing, s)) * 6;
 
@@ -391,6 +402,17 @@ void Evaluator::calculatePassedPawns(const Board& board, EvalInfo& score, PawnTa
             bonusMG -= 15;
         } else if (board.isSquareAttacked(promoSq, WHITE)) {
             bonusEG -= 25;
+        }
+
+        // Defense and attack status of the passed pawn itself
+        bool bDefended = board.isSquareAttacked(s, BLACK);
+        bool bAttacked = board.isSquareAttacked(s, WHITE);
+        if (bAttacked && !bDefended) {
+            bonusEG /= 2;
+            bonusMG /= 2;
+        } else if (bDefended) {
+            bonusEG += 15;
+            bonusMG += 10;
         }
 
         bonusEG += (5 - distance(bKing, s)) * 6;
