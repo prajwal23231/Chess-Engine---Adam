@@ -361,7 +361,11 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         } else {
             // Non-PV moves: null-window search with LMR
             int reduction = 0;
-            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck) {
+            bool isKiller = (ply < MAX_PLYS) && 
+                            (moves[i].getValue() == killerMoves[0][ply].getValue() || 
+                             moves[i].getValue() == killerMoves[1][ply].getValue());
+
+            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck && !isKiller) {
                 if (movesSearched >= 8 && depth >= 5) {
                     reduction = 2;
                 } else {
