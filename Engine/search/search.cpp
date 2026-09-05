@@ -367,6 +367,21 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         int score = 0;
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
 
+        // Move-Loop Futility Pruning for quiet non-checking moves at low depth
+        if (movesSearched > 0 && depth <= 2 && !inCheck && isQuiet && abs(alpha) < MATE_THRESHOLD) {
+            bool isKiller = (ply < MAX_PLYS) && 
+                            (moves[i].getValue() == killerMoves[0][ply].getValue() || 
+                             moves[i].getValue() == killerMoves[1][ply].getValue());
+            if (!isKiller) {
+                Square oppKing = board.getKingSquare(opp);
+                bool givesCheck = board.isSquareAttacked(oppKing, movingSide);
+                if (!givesCheck && staticEval + 120 * depth <= alpha) {
+                    board.undoMove(moves[i]);
+                    continue;
+                }
+            }
+        }
+
         if (movesSearched == 0) {
             // PV candidate: full window search
             score = -negamax(-beta, -alpha, depth - 1 + extension, ply + 1);
