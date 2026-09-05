@@ -104,6 +104,18 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
         if (killerMoves[1][ply].getValue() == move.getValue()) return 80000;
     }
 
+    // Advanced pawn pushes
+    Piece movedPiece = move.getMovedPiece();
+    if (movedPiece == WP || movedPiece == BP) {
+        int toRank = getRank(move.getTo());
+        if ((side == WHITE && toRank == 6) || (side == BLACK && toRank == 1)) {
+            return 82000; // 7th rank: 1 square from queening
+        }
+        if ((side == WHITE && toRank == 5) || (side == BLACK && toRank == 2)) {
+            return 76000; // 6th rank: advanced pawn push
+        }
+    }
+
 
     // History heuristic
     int historyScore = min(historyTable[side][move.getFrom()][move.getTo()], 65000);
