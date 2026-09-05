@@ -1232,6 +1232,14 @@ void Evaluator::calculateBishopTrappedAndBad(const Board& board, EvalInfo& score
         if(sq == B3 && (bp & (1ULL<<A4)) && (bp & (1ULL<<C4))){
             score.mg -= 150;
         }
+        if(sq == A7 && (bp & (1ULL<<B6))){
+            score.mg -= 150;
+            score.eg -= 150;
+        }
+        if(sq == H7 && (bp & (1ULL<<G6))){
+            score.mg -= 150;
+            score.eg -= 150;
+        }
     }
 
     while (bb) {
@@ -1244,6 +1252,14 @@ void Evaluator::calculateBishopTrappedAndBad(const Board& board, EvalInfo& score
 
         if(sq == B6 && (wp & (1ULL<<A5)) && (wp & (1ULL<<C5))){
             score.mg += 150;
+        }
+        if(sq == A2 && (wp & (1ULL<<B3))){
+            score.mg += 150;
+            score.eg += 150;
+        }
+        if(sq == H2 && (wp & (1ULL<<G3))){
+            score.mg += 150;
+            score.eg += 150;
         }
     }
 }
