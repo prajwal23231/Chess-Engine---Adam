@@ -57,7 +57,8 @@ int Evaluator::evaluate(const Board& board){
     score.eg = (score.eg*scaleFactor)/128;
 
     int mult = (board.getMovingSide() == WHITE ? 1 : -1);
-    return mult * interpolate(score, phase);
+    constexpr int TEMPO = 10;
+    return mult * interpolate(score, phase) + TEMPO;
 }
 
 
@@ -324,24 +325,23 @@ void Evaluator::calculatePassedPawns(const Board& board, EvalInfo& score, PawnTa
         Square stopSq = static_cast<Square>(s + 8);
         Square promoSq = static_cast<Square>(file + 56);
 
-        if (((1ULL << promoSq) | (1ULL << stopSq)) & bPieces) {
-            bonusEG = 0;
-            bonusMG = 0;
-            if (rank == 6 && ((1ULL << promoSq) & bPieces)) {
-                bonusEG -= 80;
-            }
-        } else {
-            if (bKing == stopSq) {
-                bonusEG /= 2;
-            } else if (occ & (1ULL << stopSq)) {
-                bonusEG -= 25;
-            } else if (board.isSquareAttacked(stopSq, BLACK)) {
-                bonusEG -= 20;
-            }
+        // Blockade checks on stopSq
+        if ((1ULL << stopSq) & bPieces) {
+            bonusEG /= 2;
+            bonusMG /= 2;
+        } else if ((1ULL << stopSq) & wPieces) {
+            bonusEG -= 20;
+            bonusMG -= 10;
+        } else if (board.isSquareAttacked(stopSq, BLACK)) {
+            bonusEG -= 20;
+        }
 
-            if (board.isSquareAttacked(promoSq, BLACK)) {
-                bonusEG -= 30;
-            }
+        // Control / occupation of promoSq
+        if ((1ULL << promoSq) & bPieces) {
+            bonusEG -= 35;
+            bonusMG -= 15;
+        } else if (board.isSquareAttacked(promoSq, BLACK)) {
+            bonusEG -= 25;
         }
 
         bonusEG += (5 - distance(wKing, s)) * 6;
@@ -374,24 +374,23 @@ void Evaluator::calculatePassedPawns(const Board& board, EvalInfo& score, PawnTa
         Square stopSq = static_cast<Square>(s - 8);
         Square promoSq = static_cast<Square>(file); // 1st rank
 
-        if (((1ULL << promoSq) | (1ULL << stopSq)) & wPieces) {
-            bonusEG = 0;
-            bonusMG = 0;
-            if (mirrored == 6 && ((1ULL << promoSq) & wPieces)) {
-                bonusEG -= 80;
-            }
-        } else {
-            if (wKing == stopSq) {
-                bonusEG /= 2;
-            } else if (occ & (1ULL << stopSq)) {
-                bonusEG -= 25;
-            } else if (board.isSquareAttacked(stopSq, WHITE)) {
-                bonusEG -= 20;
-            }
+        // Blockade checks on stopSq
+        if ((1ULL << stopSq) & wPieces) {
+            bonusEG /= 2;
+            bonusMG /= 2;
+        } else if ((1ULL << stopSq) & bPieces) {
+            bonusEG -= 20;
+            bonusMG -= 10;
+        } else if (board.isSquareAttacked(stopSq, WHITE)) {
+            bonusEG -= 20;
+        }
 
-            if (board.isSquareAttacked(promoSq, WHITE)) {
-                bonusEG -= 30;
-            }
+        // Control / occupation of promoSq
+        if ((1ULL << promoSq) & wPieces) {
+            bonusEG -= 35;
+            bonusMG -= 15;
+        } else if (board.isSquareAttacked(promoSq, WHITE)) {
+            bonusEG -= 25;
         }
 
         bonusEG += (5 - distance(bKing, s)) * 6;
@@ -747,27 +746,30 @@ void Evaluator::calculateKnightOutpost(const Board &board, EvalInfo &score, Pawn
 
 
 void Evaluator::calculateKingSafety(const Board& board, EvalInfo &score){
-    if(board.getGamePhase() < 6) return ;
-
     Square wKingSq = board.getKingSquare(WHITE);
     Square bKingSq = board.getKingSquare(BLACK);
+
+    // Endgame King Activity: only evaluate in true late endgames (phase <= 4)
+    if (board.getGamePhase() <= 4) {
+        int wRank = getRank(wKingSq);
+        int bRank = getRank(bKingSq);
+
+        // White king advanced into enemy territory (rank >= 4)
+        if (wRank >= 4) {
+            score.eg += (wRank - 3) * 15;
+        }
+
+        // Black king advanced into White territory (rank <= 3)
+        if (bRank <= 3) {
+            score.eg -= (4 - bRank) * 15;
+        }
+    }
+
+    if(board.getGamePhase() < 6) return ;
 
     U64 wp = board.getBitboard(WP);
     U64 bp = board.getBitboard(BP);
     U64 occ = board.getOccupancy(BOTH);
-
-
-    if (board.getGamePhase() < 12) {
-        // White king advanced into enemy territory (rank >= 4)
-        if (getRank(wKingSq) >= 4) {
-            score.eg += (getRank(wKingSq) - 3) * 15;
-        }
-
-        // Black king advanced into White territory (rank <= 3)
-        if (getRank(bKingSq) <= 3) {
-            score.eg -= (4 - getRank(bKingSq)) * 15;
-        }
-    }
 
 
     // White king safety - only apply pawn shield penalty when King is castled / on flanks
