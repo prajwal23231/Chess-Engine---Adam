@@ -1054,7 +1054,7 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
     Square bKing = board.getKingSquare(BLACK);
 
     // White castling evaluation
-    if (wKing == G1 || wKing == C1) {
+    if (wKing == G1 || wKing == H1 || wKing == C1 || wKing == B1) {
         score.mg += 30; // Safely castled!
     }
     
@@ -1068,7 +1068,7 @@ void Evaluator::calculateDevelopment(const Board& board, EvalInfo& score){
 
 
     // Black castling evaluation
-    if (bKing == G8 || bKing == C8) {
+    if (bKing == G8 || bKing == H8 || bKing == C8 || bKing == B8) {
         score.mg -= 30; // Safely castled!
     }
     
