@@ -312,8 +312,8 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
             }
         }
 
-        // Null Move Pruning (NMP)
-        constexpr int R = 2; // reduction factor (2 plies)
+        // Dynamic Null Move Pruning (NMP)
+        int R = 2 + depth / 4;
         if(allowNull && depth >= 3 && board.hasNonPawnMaterial(movingSide)){
             if(!evalEvaluated){
                 staticEval = evaluator.evaluate(board);
