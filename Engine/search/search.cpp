@@ -306,7 +306,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         if(depth <= 3){
             staticEval = evaluator.evaluate(board);
             evalEvaluated = true;
-            int margin = 120 * depth;
+            int margin = 100 * depth;
             if(staticEval - margin >= beta){
                 return beta;
             }
