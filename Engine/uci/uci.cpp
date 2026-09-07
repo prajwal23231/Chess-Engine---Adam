@@ -317,53 +317,25 @@ void UCI::handleGo(istringstream& iss){
                 int movesLeft = min(movestogo, 40);
                 allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
             } else {
-                // 1. Classical / 30+0: availableTime >= 1,800,000 ms (30+ min)
-                // Target: ~4–15 sec/move
-                if (availableTime >= 1800000) {
-                    allocatedTime = (availableTime / 120) + (myInc * 3 / 5);
-                    allocatedTime = min(allocatedTime, 15000LL); // Max 15s
-                    allocatedTime = max(allocatedTime, 5000LL);  // Min 5s
+                // Dynamic time scaling: Rapid games can last ~90 moves; Blitz games ~40 moves
+                int movesLeft = 38;
+                if (availableTime >= 1200000) {       // 20+ min (Classical)
+                    movesLeft = 90;
+                } else if (availableTime >= 400000) { // 6.5 - 20 min (Rapid: 10m/15m)
+                    movesLeft = 85;
+                } else if (availableTime >= 80000) {  // 1.5 - 6.5 min (Standard Blitz: 3m/5m)
+                    movesLeft = 38;
+                } else if (availableTime >= 20000) {  // 20s - 80s (Bullet / low time)
+                    movesLeft = 25;
+                } else {                              // < 20s (Extreme scramble)
+                    movesLeft = 16;
                 }
-                // 2. 20+0: 1,200,000 ms <= availableTime < 1,800,000 ms (20–30 min)
-                // Target: ~3–10 sec/move
-                else if (availableTime >= 1200000) {
-                    allocatedTime = (availableTime / 140) + (myInc * 3 / 5);
-                    allocatedTime = min(allocatedTime, 10000LL); // Max 10s
-                    allocatedTime = max(allocatedTime, 3000LL);  // Min 3s
-                }
-                // 3. 15+10 / Long Rapid: 800,000 ms <= availableTime < 1,200,000 ms (13–20 min)
-                // Target: ~2–8 sec/move
-                else if (availableTime >= 800000) {
-                    allocatedTime = (availableTime / 180) + (myInc / 2);
-                    allocatedTime = min(allocatedTime, 8000LL);  // Max 8s
-                    allocatedTime = max(allocatedTime, 2000LL);  // Min 2s
-                }
-                // 4. 10+0 and 10+5: 400,000 ms <= availableTime < 800,000 ms (6.5–13 min)
-                // Target: up to 6 sec/move strictly for Rapid
-                else if (availableTime >= 400000) {
-                    allocatedTime = (availableTime / 100) + (myInc / 2);
-                    long long maxRapidCap = 6000LL;
-                    allocatedTime = min(allocatedTime, maxRapidCap); // Max 6s strictly for Rapid
-                    allocatedTime = max(allocatedTime, 1500LL);      // Min 1.5s
-                }
-                // 5. Blitz standard: 100,000 ms <= availableTime < 400,000 ms (1.5–6.5 min, e.g. 3m/5m)
-                // Target: up to 3 sec max (~1–3 sec/move)
-                else if (availableTime >= 100000) {
-                    allocatedTime = (availableTime / 90) + (myInc * 2 / 5);
-                    allocatedTime = min(allocatedTime, 3000LL); // Max 3s strictly for Blitz
-                    allocatedTime = max(allocatedTime, 800LL);
-                }
-                // 6. Bullet / Low Time Scramble: 20,000 ms <= availableTime < 100,000 ms (20s–1.5m)
-                else if (availableTime >= 20000) {
-                    allocatedTime = (availableTime / 40) + (myInc * 2 / 5);
-                    allocatedTime = min(allocatedTime, 1500LL); // Max 1.5s
-                    allocatedTime = max(allocatedTime, 300LL);
-                }
-                // 7. Extreme Scramble: < 20 seconds remaining
-                else {
-                    // Fast cutoff to prevent flagging
-                    allocatedTime = (availableTime / 20) + (myInc / 4);
-                    allocatedTime = min(allocatedTime, 600LL);  // Max 600ms
+
+                allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
+
+                // Never spend more than 25% of remaining time on a single move in blitz/bullet
+                if (availableTime < 300000) {
+                    allocatedTime = min(allocatedTime, availableTime / 4);
                 }
             }
 
@@ -376,9 +348,10 @@ void UCI::handleGo(istringstream& iss){
                 allocatedTime = 10;
             }
 
-            search.setMoveTime(allocatedTime);
+            long long softLimit = allocatedTime * 6 / 10;
+            search.setMoveTime(allocatedTime, softLimit);
         } else {
-            search.setMoveTime(15000); // 15-second default if no clock provided (unlimited / correspondence)
+            search.setMoveTime(15000, 9000); // 15-second default if no clock provided
         }
     }
 

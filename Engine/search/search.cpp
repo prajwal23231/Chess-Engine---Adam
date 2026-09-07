@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include "syzygy/syzygy.h"
+#include "see.h"
 
 using namespace std;
 using namespace Bitboard;
@@ -76,11 +77,13 @@ int Search::scoreMove(const Move& move, int ply,const Move& ttMove) {
         int victimType = (captured == EMPTY ? PAWN : (captured >= BP ? captured - BP : captured));
 
         int diff = mvvPieceValues[victimType] * 10 - mvvPieceValues[attackerType];
-        if (mvvPieceValues[victimType] >= mvvPieceValues[attackerType]) {
+
+        // Fast MVV-LVA: if victim >= attacker (e.g. PxQ, BxR, RxR, PxP), it is winning/neutral
+        // Only run SEE for potential losing captures (victim < attacker, e.g. QxP, BxP, RxN)
+        if (mvvPieceValues[victimType] >= mvvPieceValues[attackerType] || SEE::seeGe(board, move, 0)) {
             return 100000 + diff;
         } else {
-            // Bad/losing capture: order after killer moves
-            return 70000 + diff;
+            return 40000 + diff;
         }
     }
 
@@ -213,6 +216,11 @@ int Search::quiescence(int alpha, int beta, int ply) {
         swap(moves[i], moves[bestIdx]);
 
         if (scores[i] < 0) break;
+
+        // SEE Pruning in Quiescence: Prune any capture that statically loses material!
+        if (!moves[i].isPromotion() && !SEE::seeGe(board, moves[i], 0)) {
+            continue;
+        }
 
         // Accurate Delta Pruning: only prune if even capturing this specific piece cannot reach alpha
         Piece captured = moves[i].getCapturedPiece();
@@ -360,6 +368,13 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         swap(scores[i], scores[bestIdx]);
         swap(moves[i], moves[bestIdx]);
 
+        // SEE Pruning for losing captures at shallow depths: MUST BE EVALUATED BEFORE makeMove!
+        if (movesSearched > 0 && depth <= 3 && !inCheck && moves[i].isCapture() && !moves[i].isPromotion() && abs(alpha) < MATE_THRESHOLD) {
+            if (!SEE::seeGe(board, moves[i], -50 * depth)) {
+                continue;
+            }
+        }
+
         if (ply < MAX_PLYS) {
             searchStack[ply] = moves[i];
         }
@@ -502,6 +517,14 @@ Move Search::findBestMove(int depth) {
 
     for (int d = 1; d <= depth; d++) {
         if (isTimeUp()) break;
+
+        // Soft time limit: do not start a new iteration if soft limit has passed
+        if (d > 1) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
+            if (elapsed >= softTimeLimitMs) {
+                break;
+            }
+        }
 
         int alpha = -INFINITY_SCORE, beta = INFINITY_SCORE;
         Move currentIterationBest = moves[0];

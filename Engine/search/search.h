@@ -16,8 +16,9 @@ public:
 
     Move findBestMove(int depth);
 
-    inline void setMoveTime(long long time) {
-        timeLimitMs = time;
+    inline void setMoveTime(long long hardTime, long long softTime = 0) {
+        timeLimitMs = hardTime;
+        softTimeLimitMs = (softTime > 0) ? softTime : (hardTime * 6 / 10);
     }
 
     inline void stopSearch() {
@@ -34,6 +35,7 @@ private:
 
     U64 nodes = 0;
     long long timeLimitMs = 5000;
+    long long softTimeLimitMs = 3000;
     Clock::time_point startTime;
     bool stopped = false;
 
