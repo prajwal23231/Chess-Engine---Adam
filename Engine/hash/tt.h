@@ -17,6 +17,7 @@ struct TTEntry {
     int score;
     int depth;
     TTFlag flag;
+    uint8_t age;
     Move bestMove;
 };
 
@@ -28,6 +29,9 @@ public:
 
     void init(int sizeMB);
     void clear();
+
+    inline void newSearch() { currentAge++; }
+    inline uint8_t getAge() const { return currentAge; }
 
     TTEntry* probe(U64 key);
     void store(U64 key, int depth, int score, TTFlag flag, Move bestMove, int ply);
@@ -49,4 +53,5 @@ private:
     TTEntry* table;
     U64 numEntries;
     U64 mask;
+    uint8_t currentAge = 0;
 };

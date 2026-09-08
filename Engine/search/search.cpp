@@ -146,7 +146,7 @@ void Search::orderMoves(Move* moves, int* scores, int count, int ply, const Move
 
 
 int Search::quiescence(int alpha, int beta, int ply) {
-    if ((nodes & 1023) == 0 && isTimeUp()) return 0;
+    if ((nodes & 511) == 0 && isTimeUp()) return 0;
     nodes++;
 
     if (ply >= MAX_PLYS - 1) return evaluator.evaluate(board);
@@ -196,11 +196,11 @@ int Search::quiescence(int alpha, int beta, int ply) {
     if (standPat >= beta) return beta;
     if (standPat > alpha) alpha = standPat;
 
-    orderMoves(moves, scores, count, ply);
-
-    // Filter out quiet moves
+    // Only score captures and promotions in quiescence search
     for (int i = 0; i < count; i++) {
-        if (!(moves[i].isCapture() || moves[i].isPromotion())) {
+        if (moves[i].isCapture() || moves[i].isPromotion()) {
+            scores[i] = scoreMove(moves[i], ply);
+        } else {
             scores[i] = -1;
         }
     }
@@ -250,7 +250,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         return quiescence(alpha, beta, ply);
     }
 
-    if ((nodes & 1023) == 0 && isTimeUp()) return 0;
+    if ((nodes & 511) == 0 && isTimeUp()) return 0;
     nodes++;
 
     // Draw detection (50-move rule and 3-fold repetition)
@@ -416,7 +416,10 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
                 }
             }
 
-            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck && !isKiller && !isPawnTo7th) {
+            Square oppKing = board.getKingSquare(opp);
+            bool givesCheck = board.isSquareAttacked(oppKing, movingSide);
+
+            if (movesSearched >= 4 && depth >= 3 && isQuiet && !inCheck && !isKiller && !isPawnTo7th && !givesCheck) {
                 if (movesSearched >= 8 && depth >= 5) {
                     reduction = 2;
                 } else {
@@ -522,6 +525,11 @@ Move Search::findBestMove(int depth) {
         if (d > 1) {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - startTime).count();
             if (elapsed >= softTimeLimitMs) {
+                break;
+            }
+            // Branching factor prediction: next depth typically takes ~3x longer
+            // Don't start if estimated time would exceed hard limit
+            if (elapsed * 3 >= timeLimitMs) {
                 break;
             }
         }

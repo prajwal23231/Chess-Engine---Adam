@@ -317,25 +317,31 @@ void UCI::handleGo(istringstream& iss){
                 int movesLeft = min(movestogo, 40);
                 allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
             } else {
-                // Dynamic time scaling: Rapid games can last ~90 moves; Blitz games ~40 moves
-                int movesLeft = 38;
+                // Dynamic time scaling based on remaining time
+                int movesLeft = 40;
                 if (availableTime >= 1200000) {       // 20+ min (Classical)
                     movesLeft = 90;
                 } else if (availableTime >= 400000) { // 6.5 - 20 min (Rapid: 10m/15m)
                     movesLeft = 85;
                 } else if (availableTime >= 80000) {  // 1.5 - 6.5 min (Standard Blitz: 3m/5m)
-                    movesLeft = 38;
-                } else if (availableTime >= 20000) {  // 20s - 80s (Bullet / low time)
-                    movesLeft = 25;
-                } else {                              // < 20s (Extreme scramble)
-                    movesLeft = 16;
+                    movesLeft = 40;
+                } else if (availableTime >= 30000) {  // 30s - 80s (Bullet)
+                    movesLeft = 50;
+                } else if (availableTime >= 10000) {  // 10s - 30s (Low time)
+                    movesLeft = 60;
+                } else {                              // < 10s (Extreme scramble)
+                    movesLeft = 100;
                 }
 
                 allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
 
-                // Never spend more than 25% of remaining time on a single move in blitz/bullet
-                if (availableTime < 300000) {
-                    allocatedTime = min(allocatedTime, availableTime / 4);
+                // Hard cap: never spend too much of remaining time on a single move
+                if (availableTime < 10000) {
+                    allocatedTime = min(allocatedTime, availableTime / 30);  // 3% cap in scramble
+                } else if (availableTime < 80000) {
+                    allocatedTime = min(allocatedTime, availableTime / 12);  // 8% cap in bullet
+                } else if (availableTime < 300000) {
+                    allocatedTime = min(allocatedTime, availableTime / 4);   // 25% cap in blitz
                 }
             }
 
@@ -348,7 +354,15 @@ void UCI::handleGo(istringstream& iss){
                 allocatedTime = 10;
             }
 
-            long long softLimit = allocatedTime * 6 / 10;
+            // Tighter soft limit for bullet to prevent deep iterations from overshooting
+            long long softLimit;
+            if (availableTime < 10000) {
+                softLimit = allocatedTime * 2 / 10;  // 20% soft limit for scramble
+            } else if (availableTime < 80000) {
+                softLimit = allocatedTime * 3 / 10;  // 30% soft limit for bullet
+            } else {
+                softLimit = allocatedTime * 6 / 10;  // 60% soft limit for blitz+
+            }
             search.setMoveTime(allocatedTime, softLimit);
         } else {
             search.setMoveTime(15000, 9000); // 15-second default if no clock provided
