@@ -326,11 +326,11 @@ void UCI::handleGo(istringstream& iss){
                 } else if (availableTime >= 80000) {  // 1.5 - 6.5 min (Standard Blitz: 3m/5m)
                     movesLeft = 40;
                 } else if (availableTime >= 30000) {  // 30s - 80s (Bullet)
-                    movesLeft = 50;
+                    movesLeft = 120;
                 } else if (availableTime >= 10000) {  // 10s - 30s (Low time)
-                    movesLeft = 60;
-                } else {                              // < 10s (Extreme scramble)
                     movesLeft = 100;
+                } else {                              // < 10s (Extreme scramble)
+                    movesLeft = 120;
                 }
 
                 allocatedTime = (availableTime / movesLeft) + (myInc * 3 / 4);
@@ -338,8 +338,10 @@ void UCI::handleGo(istringstream& iss){
                 // Hard cap: never spend too much of remaining time on a single move
                 if (availableTime < 10000) {
                     allocatedTime = min(allocatedTime, availableTime / 30);  // 3% cap in scramble
+                } else if (availableTime < 30000) {
+                    allocatedTime = min(allocatedTime, 250LL);              // 250ms cap in low time
                 } else if (availableTime < 80000) {
-                    allocatedTime = min(allocatedTime, availableTime / 12);  // 8% cap in bullet
+                    allocatedTime = min(allocatedTime, 350LL);              // 350ms cap in bullet
                 } else if (availableTime < 300000) {
                     allocatedTime = min(allocatedTime, availableTime / 4);   // 25% cap in blitz
                 }
@@ -359,7 +361,7 @@ void UCI::handleGo(istringstream& iss){
             if (availableTime < 10000) {
                 softLimit = allocatedTime * 2 / 10;  // 20% soft limit for scramble
             } else if (availableTime < 80000) {
-                softLimit = allocatedTime * 3 / 10;  // 30% soft limit for bullet
+                softLimit = allocatedTime * 35 / 100; // 35% soft limit for bullet (~120ms)
             } else {
                 softLimit = allocatedTime * 6 / 10;  // 60% soft limit for blitz+
             }

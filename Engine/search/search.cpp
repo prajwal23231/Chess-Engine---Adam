@@ -310,18 +310,17 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
     bool evalEvaluated = false;
 
     if(!inCheck && abs(beta) < MATE_THRESHOLD){
-        // Reverse Futility Pruning (RFP) for depth <= 3
-        if(depth <= 3){
+        // Reverse Futility Pruning (RFP) for depth <= 6
+        if(depth <= 6){
             staticEval = evaluator.evaluate(board);
             evalEvaluated = true;
-            int margin = 100 * depth;
+            int margin = 80 * depth;
             if(staticEval - margin >= beta){
                 return beta;
             }
         }
 
         // Dynamic Null Move Pruning (NMP)
-        int R = 2 + depth / 4;
         if(allowNull && depth >= 3 && board.hasNonPawnMaterial(movingSide)){
             if(!evalEvaluated){
                 staticEval = evaluator.evaluate(board);
@@ -329,6 +328,7 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
             }
 
             if(staticEval >= beta){
+                int R = 3 + depth / 4 + min(2, (staticEval - beta) / 200);
                 board.makeNullMove();
                 int NullScore = -negamax(-beta, -beta+1, depth-1-R, ply+1, false);
                 board.undoNullMove();
@@ -383,14 +383,15 @@ int Search::negamax(int alpha, int beta, int depth, int ply, bool allowNull) {
         bool isQuiet = !moves[i].isCapture() && !moves[i].isPromotion();
 
         // Move-Loop Futility Pruning for quiet non-checking moves at low depth
-        if (movesSearched > 0 && depth <= 2 && !inCheck && isQuiet && abs(alpha) < MATE_THRESHOLD) {
+        if (movesSearched > 0 && depth <= 3 && !inCheck && isQuiet && abs(alpha) < MATE_THRESHOLD) {
             bool isKiller = (ply < MAX_PLYS) && 
                             (moves[i].getValue() == killerMoves[0][ply].getValue() || 
                              moves[i].getValue() == killerMoves[1][ply].getValue());
             if (!isKiller) {
                 Square oppKing = board.getKingSquare(opp);
                 bool givesCheck = board.isSquareAttacked(oppKing, movingSide);
-                if (!givesCheck && staticEval + 100 * depth <= alpha) {
+                int futilityMargin = 80 + 70 * depth;
+                if (!givesCheck && staticEval + futilityMargin <= alpha) {
                     board.undoMove(moves[i]);
                     continue;
                 }
