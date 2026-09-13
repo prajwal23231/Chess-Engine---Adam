@@ -6,27 +6,13 @@
 [![Endgames](https://img.shields.io/badge/Endgames-Syzygy%205--Piece%20%2B%20KPK%20Bitbase-purple.svg)](#endgame-bitbases--tablebases)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-prajwal23231%2FChess--Engine----Adam-181717.svg?logo=github)](https://github.com/prajwal23231/Chess-Engine---Adam)
 
-**ADAM** is a modern, tournament-grade, UCI-compliant chess engine designed and written from scratch in C++. Built from first principles for extreme speed, search depth, and tactical precision, ADAM features a dual bitboard/mailbox board representation, Fancy Magic Bitboards, strictly legal move generation, a 256-step tapered evaluation system backed by a dedicated Pawn Hash Table and an in-memory retrograde KPK Bitbase, integrated Syzygy 3-4-5 piece endgame tablebases, and an advanced Alpha-Beta search engine combining Principal Variation Search (PVS), dynamic Null Move Pruning (NMP), Reverse Futility Pruning (RFP), Move-Loop Futility Pruning, Late Move Reductions (LMR), and multi-tier move ordering heuristics.
+**ADAM** is a modern, tournament-grade, UCI-compliant chess engine designed and written from scratch in C++. Built from first principles for extreme speed, search depth, and tactical precision, ADAM features a dual bitboard/mailbox board representation, Fancy Magic Bitboards, strictly legal move generation, a 256-step tapered evaluation system backed by a dedicated Pawn Hash Table and an in-memory retrograde KPK Bitbase, integrated Syzygy 3-4-5 piece endgame tablebases, and an advanced Alpha-Beta search engine combining Principal Variation Search (PVS), Static Exchange Evaluation (SEE), dynamic Null Move Pruning (NMP), Reverse Futility Pruning (RFP), Move-Loop Futility Pruning, Late Move Reductions (LMR), and multi-tier move ordering heuristics.
 
 * **Repository**: [https://github.com/prajwal23231/Chess-Engine---Adam](https://github.com/prajwal23231/Chess-Engine---Adam)
 * **Author**: Prajwal  
 * **Language**: C++20 / C++17  
 * **Protocol**: UCI (Universal Chess Interface)  
 * **Throughput**: 2.0+ to 2.5+ Million NPS (Single Core)  
-
----
-
-## Key Milestone & Live Benchmark Showcase
-
-### Defeating Stockfish Level 7 on Lichess (3-Minute Blitz — 96% Accuracy)
-
-ADAM was deployed as an autonomous bot on Lichess and challenged against **Stockfish Level 7** in a real-time **3-minute Blitz** time control:
-
-* **Match Result**: Decisive victory against Stockfish Level 7
-* **Move Accuracy**: **96% Accuracy** across the game with 0 critical blunders
-* **Tactical Precision**: Outcalculated Stockfish in dynamic middlegame piece-tension skirmishes
-* **Adaptive Clock Allocation**: Flawless dynamic time distribution under 3-minute blitz pressure without entering time scrambles
-* **Endgame Conversion**: Seamless transition from middlegame king pressure into Syzygy-verified winning endgame tablebase execution
 
 ---
 
@@ -44,6 +30,7 @@ ADAM was deployed as an autonomous bot on Lichess and challenged against **Stock
                                  |  - Principal Variation Search  |
                                  |  - Dynamic Null Move Pruning   |
                                  |  - Reverse Futility Pruning    |
+                                 |  - Static Exchange Eval (SEE)  |
                                  |  - Late Move Reductions (LMR)  |
                                  |  - Quiescence & Delta Pruning  |
                                  +-------+----------------+-------+
@@ -55,7 +42,7 @@ ADAM was deployed as an autonomous bot on Lichess and challenged against **Stock
 | 11-Tier Move Ordering      |                                         | Dual Board State Machine   |
 | - Hash Move (TT Probe)     |                                         | - 12 Piece Bitboards       |
 | - Queen/Knight Promotions  |                                         | - 3 Occupancy Bitboards    |
-| - MVV-LVA Captures         |                                         | - 8x8 Mailbox Array        |
+| - SEE-Filtered MVV-LVA     |                                         | - 8x8 Mailbox Array        |
 | - 2 Killer Move Slots      |                                         | - Incremental Zobrist Keys |
 | - Countermove & History    |                                         +--------------+-------------+
 +----------------------------+                                                        |
@@ -84,7 +71,6 @@ ADAM was deployed as an autonomous bot on Lichess and challenged against **Stock
 
 ## Table of Contents
 
-- [Key Milestone & Live Benchmark Showcase](#key-milestone--live-benchmark-showcase)
 - [System Architecture](#system-architecture)
 - [Overview & Architectural Highlights](#overview--architectural-highlights)
 - [Directory Layout](#directory-layout)
@@ -128,6 +114,7 @@ ADAM was deployed as an autonomous bot on Lichess and challenged against **Stock
   - [Reverse Futility Pruning (RFP)](#reverse-futility-pruning-rfp)
   - [Move-Loop Futility Pruning](#move-loop-futility-pruning)
   - [Late Move Reductions (LMR)](#late-move-reductions-lmr)
+  - [Static Exchange Evaluation (SEE) & Capture Pruning](#static-exchange-evaluation-see--capture-pruning)
   - [Move Ordering Hierarchy (11 Tiers)](#move-ordering-hierarchy-11-tiers)
   - [Quiescence Search & Victim-Specific Delta Pruning](#quiescence-search--victim-specific-delta-pruning)
   - [Syzygy Search & Root Probing](#syzygy-search--root-probing)
@@ -163,6 +150,7 @@ ADAM was deployed as an autonomous bot on Lichess and challenged against **Stock
   - Dynamic Null Move Pruning (NMP) with adaptive reduction $R = 2 + \text{depth} / 4$ and non-pawn material zugzwang verification.
   - Reverse Futility Pruning (RFP / Static NMP) at $\text{depth} \le 3$ with margin $100 \times \text{depth}$ (+34.86 Elo).
   - Move-Loop Futility Pruning for quiet moves at $\text{depth} \le 2$ with margin $100 \times \text{depth}$ (+70.44 Elo).
+  - Static Exchange Evaluation (SEE) for exact material exchange verification, good vs bad capture sorting, and losing capture pruning in quiescence and main search.
   - Late Move Reductions (LMR) with 1–2 ply reductions, strictly exempting tactical moves, checks, killer moves, and 7th-rank pawn pushes.
   - Check extensions (+1 ply) during forcing check sequences.
   - 11-tier move ordering hierarchy incorporating TT hash move, promotions, MVV-LVA good/bad captures, 2 killer slots per ply, counter-move heuristic, advanced pawn advances, castling shelter score, and history heuristic.
@@ -212,7 +200,8 @@ Adam/
 │   │   └── perft_results.h       # Reference perft move counts from standard positions
 │   ├── search/                   # Alpha-Beta search & move ordering
 │   │   ├── search.h              # Search class declaration, time controls & heuristics
-│   │   └── search.cpp            # PVS, TT probe/store, NMP, RFP, LMR, Futility, MVV-LVA, Killers
+│   │   ├── search.cpp            # PVS, TT probe/store, NMP, RFP, LMR, Futility, MVV-LVA, Killers
+│   │   └── see.h                 # Static Exchange Evaluation (SEE) engine & exchange evaluator
 │   ├── syzygy/                   # Syzygy Endgame Tablebase Probing Library (Fathom-based)
 │   │   ├── syzygy.h / .cpp       # High-level engine Syzygy wrapper (root probe & WDL probe)
 │   │   ├── tbprobe.h / .c        # Fathom tablebase probing engine implementation
@@ -550,6 +539,47 @@ Quiet moves searched late in the move list ($\ge 4$ moves) at depth $\ge 3$ are 
 - **Strict Exemptions**: Checks, tactical moves (captures and promotions), killer moves, and advanced pawn pushes to the 7th rank are completely exempt from LMR.
 - If a reduced search exceeds $\alpha$, it is re-searched at full depth.
 
+### Static Exchange Evaluation (SEE) & Capture Pruning
+
+ADAM features a dedicated, high-speed Static Exchange Evaluation (SEE) engine implemented in `Engine/search/see.h`. SEE statically calculates the exact material balance resulting from an exchange sequence on a target square without making or undoing full board moves:
+
+#### 1. Dynamic Ray-Casting & X-Ray Discovery (`SEE::attackersTo`)
+To evaluate multi-piece battery attacks (e.g., Queen behind Rook, Bishop behind Pawn), `SEE::attackersTo()` dynamically generates attack bitboards across an updated occupancy mask `occ`:
+- Non-sliding attacks (Pawns, Knights, Kings) are looked up via precomputed tables.
+- Sliding attacks (Bishops, Rooks, Queens) are dynamically recomputed using Fancy Magic Bitboards against `occ`, uncovering hidden X-ray attackers as pieces are removed from the exchange square:
+```cpp
+inline U64 attackersTo(const Board& board, Square sq, U64 occ) {
+    U64 attackers = 0;
+    attackers |= attacks.getBlackPawnAttack(sq) & board.getBitboard(WP);
+    attackers |= attacks.getWhitePawnAttack(sq) & board.getBitboard(BP);
+    attackers |= attacks.getKnightAttack(sq) & (board.getBitboard(WN) | board.getBitboard(BN));
+    attackers |= attacks.getBishopAttack(sq, occ) & (board.getBitboard(WB) | board.getBitboard(BB));
+    attackers |= attacks.getRookAttack(sq, occ) & (board.getBitboard(WR) | board.getBitboard(BR));
+    attackers |= attacks.getQueenAttack(sq, occ) & (board.getBitboard(WQ) | board.getBitboard(BQ));
+    attackers |= attacks.getKingAttack(sq) & (board.getBitboard(WK) | board.getBitboard(BK));
+    return attackers & occ;
+}
+```
+
+#### 2. Least Valuable Attacker (LVA) Minimax Loop
+The algorithm simulates optimal exchange play using the Least Valuable Attacker heuristic ($P \to N \to B \to R \to Q \to K$). The side to move always attacks with their least valuable piece, removing it from `occ` and tracking the recursive gain:
+$$\text{gain}[0] = \text{seePieceValues}[\text{captured}]$$
+$$\text{gain}[d] = \text{seePieceValues}[\text{moved}] - \text{gain}[d - 1]$$
+The final exchange score is computed by backward minimax propagation:
+$$\text{gain}[d - 1] = \max(-\text{gain}[d - 1], \ -\text{gain}[d])$$
+
+#### 3. Search Engine SEE Applications
+- **Fast Threshold Checking (`SEE::seeGe(board, move, threshold)`)**: Determines if $\text{SEE}(\text{move}) \ge \text{threshold}$ in $O(1)$ without allocating full recursive stacks.
+- **Move Ordering Classification**: Captures with $\text{Victim} < \text{Attacker}$ (e.g., $Q \times P$, $B \times P$) are evaluated via `SEE::seeGe(board, move, 0)`. Captures that break even or win material are promoted to **Tier 3 (Good Captures, `100,000+`)**, while strictly losing captures are deferred to **Tier 10 (`70,000+`)**.
+- **Quiescence Search SEE Pruning**:
+```cpp
+// Prune losing captures from the quiescence search tree:
+if (!moves[i].isPromotion() && !SEE::seeGe(board, moves[i], 0)) {
+    continue;
+}
+```
+- **Shallow Search Pruning**: Skips statically losing tactical captures in main search when $\text{SEE}(\text{move}) < -50 \times \text{depth}$.
+
 ### Move Ordering Hierarchy (11 Tiers)
 
 Moves are scored and sorted via `scoreMove()` using a strict 11-tier hierarchy:
@@ -558,14 +588,14 @@ Moves are scored and sorted via `scoreMove()` using a strict 11-tier hierarchy:
 |---|---|---|
 | **10,000,000** | TT Hash Move | Best move from Transposition Table entry |
 | **200,000+** | Promotions | Queen/underpromotions with victim capture bonus |
-| **100,000+** | Good Captures (MVV-LVA) | Captures where $\text{Victim} \ge \text{Attacker}$ |
+| **100,000+** | Good Captures (MVV-LVA + SEE) | Captures where $\text{Victim} \ge \text{Attacker}$ or $\text{SEE} \ge 0$ |
 | **90,000** | Primary Killer Move | Quiet move causing beta cutoff at this ply (slot 0) |
 | **85,000** | Counter-Move | Move refuting opponent's previous move (`searchStack[ply-1]`) |
 | **82,000** | 7th-Rank Pawn Advance | Pawn push to 7th rank (1 square from promotion) |
 | **80,000** | Secondary Killer Move | Quiet move causing beta cutoff at this ply (slot 1) |
 | **76,000** | 6th-Rank Pawn Advance | Advanced pawn push to 6th rank |
 | **75,000 max** | Castling Move | Castling safety bonus based on game phase and pawn shield |
-| **70,000+** | Bad Captures (MVV-LVA) | Captures where $\text{Victim} < \text{Attacker}$ |
+| **70,000+** | Bad Captures (MVV-LVA + SEE) | Captures where $\text{Victim} < \text{Attacker}$ and $\text{SEE} < 0$ |
 | **0 – 65,000** | History Heuristic | Quiet moves rewarded by $\text{depth}^2$ upon beta cutoffs |
 
 ### Quiescence Search & Victim-Specific Delta Pruning
@@ -575,6 +605,12 @@ To eliminate the horizon effect:
 - **Victim-Specific Delta Pruning**:
 ```cpp
 if (standPat + mvvPieceValues[victimType] + 200 < alpha && !move.isPromotion()) {
+    continue;
+}
+```
+- **SEE Pruning in Quiescence**:
+```cpp
+if (!moves[i].isPromotion() && !SEE::seeGe(board, moves[i], 0)) {
     continue;
 }
 ```
@@ -769,10 +805,23 @@ bestmove b1c3
 
 ## Roadmap & Future Directions
 
-- **Multi-Threading (Lazy SMP)**: Parallel alpha-beta search with shared Transposition Table scaling across multi-core systems.
-- **Static Exchange Evaluation (SEE)**: Accurate capture pruning in quiescence search and move ordering.
-- **Continuation History Heuristics**: Move ordering improvements based on piece-to-square history indexed by previous moves.
-- **NNUE Evaluation Architecture**: Dual-perspective halfKP/halfKA efficiently updatable neural network evaluation.
+### 1. Search & Pruning Refinements
+- **Aspiration Windows**: Narrow initial search windows $[\alpha - \delta, \beta + \delta]$ around root evaluations during iterative deepening, re-searching upon fail-high or fail-low to minimize node count.
+- **Singular Extensions & Multicut**: Detect singular root/node moves whose score strictly dominates all alternatives by a margin, extending search depth dynamically for critical tactical sequences.
+- **Continuation & Capture History**: Multi-dimensional history tables tracking move history indexed by previous piece moves (`[piece][to][prevPiece][prevTo]`) to refine move ordering deep in the tree.
+- **History Pruning**: Prune quiet moves with consistently negative history scores at low depths.
+
+### 2. Parallel Computing & Scaling (Lazy SMP)
+- **Shared Transposition Table**: Lock-free, atomic 64-bit/128-bit TT entries with XOR key verification for multi-core thread scaling.
+- **Thread Pool & Helper Threads**: Distribute search threads with randomized root move ordering and depth offsets to maximize search tree coverage across 16+ cores.
+
+### 3. Evaluation Architecture (NNUE)
+- **Dual-Perspective HalfKP / HalfKA Architecture**: Implement an Efficiently Updatable Neural Network (NNUE) running alongside or replacing classical handcrafted terms.
+- **SIMD / AVX2 Vectorized Accumulator**: Incrementally update neural network accumulator layers during `makeMove()` / `undoMove()` using 256-bit AVX2/AVX-512 vector instructions.
+- **Automated Parameter Tuning (Texel Tuning)**: Offline gradient descent / Adam optimizer running against millions of quiet EPD positions to tune PST values, mobility weights, and king safety parameters.
+
+### 4. Distributed Match & Testing Pipeline
+- **Fishtest / OpenBench Integration**: Deploy automated regression and SPRT match runners across distributed cloud workers to validate subtle (+1 to +3 Elo) search changes with high statistical confidence.
 
 ---
 
