@@ -4,11 +4,9 @@
 [![UCI Protocol](https://img.shields.io/badge/Protocol-UCI%20Compliant-brightgreen.svg)](https://en.wikipedia.org/wiki/Universal_Chess_Interface)
 [![Throughput](https://img.shields.io/badge/Throughput-2.5M%2B%20NPS%20(Single%20Core)-orange.svg)](#perft-benchmark-suite)
 [![Endgames](https://img.shields.io/badge/Endgames-Syzygy%205--Piece%20%2B%20KPK%20Bitbase-purple.svg)](#endgame-bitbases--tablebases)
-[![GitHub Repository](https://img.shields.io/badge/GitHub-prajwal23231%2FChess--Engine----Adam-181717.svg?logo=github)](https://github.com/prajwal23231/Chess-Engine---Adam)
 
 **ADAM** is a modern, tournament-grade, UCI-compliant chess engine designed and written from scratch in C++. Built from first principles for extreme speed, search depth, and tactical precision, ADAM features a dual bitboard/mailbox board representation, Fancy Magic Bitboards, strictly legal move generation, a 256-step tapered evaluation system backed by a dedicated Pawn Hash Table and an in-memory retrograde KPK Bitbase, integrated Syzygy 3-4-5 piece endgame tablebases, and an advanced Alpha-Beta search engine combining Principal Variation Search (PVS), Static Exchange Evaluation (SEE), dynamic Null Move Pruning (NMP), Reverse Futility Pruning (RFP), Move-Loop Futility Pruning, Late Move Reductions (LMR), and multi-tier move ordering heuristics.
 
-* **Repository**: [https://github.com/prajwal23231/Chess-Engine---Adam](https://github.com/prajwal23231/Chess-Engine---Adam)
 * **Author**: Prajwal  
 * **Language**: C++20 / C++17  
 * **Protocol**: UCI (Universal Chess Interface)  
