@@ -733,9 +733,24 @@ perft 5
 
 ## How to Build and Run ADAM
 
-### Compilation Recipe
+### Building with CMake (Recommended)
 
-ADAM is written in standard modern C++20 (fully backwards-compatible with C++17). Compile using `g++` (MinGW-w64 / GCC 10+) with full competitive optimization flags:
+```bash
+# 1. Configure the build with optimizations (Release, LTO, Native Arch)
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+# 2. Build ADAM engine and unit tests
+cmake --build build
+
+# 3. Run all unit tests
+ctest --test-dir build --output-on-failure
+```
+
+The build process automatically copies the updated `ADAM.exe` to the project root directory for immediate use by `run_test.bat` and `run_test.ps1`.
+
+### Manual Compilation Recipe
+
+ADAM is written in standard modern C++20 (fully backwards-compatible with C++17). Alternatively, compile directly using `g++` (MinGW-w64 / GCC 10+) with full competitive optimization flags:
 
 ```bash
 g++ -O3 -march=native -flto -DNDEBUG -std=c++20 \

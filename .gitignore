@@ -3,3 +3,11 @@ fastchess.exe
 ADAM_base.exe
 *.pgn
 config.json
+
+# CMake build outputs
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
